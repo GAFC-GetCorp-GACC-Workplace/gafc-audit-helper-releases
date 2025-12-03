@@ -30,7 +30,7 @@ jobs:
             Write-Error "gafc_audit_helper.xlam not found! Build it in Excel first."
             exit 1
           }
-          Write-Host "✓ Found gafc_audit_helper.xlam"
+          Write-Host "[OK] Found gafc_audit_helper.xlam"
 
       - name: Calculate SHA256
         id: hash
@@ -81,14 +81,46 @@ jobs:
           }
 
           $manifest | ConvertTo-Json -Depth 10 | Set-Content "releases/audit_tool.json" -Encoding UTF8
-          Write-Host "✓ Manifest updated"
+          Write-Host "[OK] Manifest updated"
 
-      - name: Checkout public repo
-        uses: actions/checkout@v4
-        with:
-          repository: muaroi2002/gafc-audit-helper-releases
-          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
-          path: public-repo
+      - name: Prepare public repo
+        shell: pwsh
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = "https://github.com/muaroi2002/gafc-audit-helper-releases.git"
+          $authRepo = $repo -replace '^https://', "https://${env:PUBLIC_REPO_TOKEN}@"
+          $dest = "public-repo"
+
+          $heads = git ls-remote --heads $authRepo
+
+          if (-not $heads) {
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+            cd $dest
+            git init
+            git checkout -b main
+            git remote add origin $authRepo
+            git config --global --add safe.directory $PWD
+            Write-Host "Initialized empty public repo with main branch"
+            return
+          }
+
+          $branch = "main"
+          if ($heads -notmatch "refs/heads/main") {
+            if ($heads -match "refs/heads/master") {
+              $branch = "master"
+            } else {
+              $branch = ($heads | Select-String "refs/heads/" | Select-Object -First 1).Matches[0].Value.Split('/')[-1]
+            }
+          }
+
+          git clone --depth 1 --branch $branch $authRepo $dest
+          cd $dest
+          git remote set-url origin $authRepo
+          git checkout -B main
+          git config --global --add safe.directory $PWD
+          Write-Host "Checked out branch '$branch' and ensured local main exists"
 
       - name: Sync files to public repo
         shell: pwsh
@@ -97,14 +129,14 @@ jobs:
 
           # Copy XLAM
           Copy-Item "gafc_audit_helper.xlam" "public-repo/gafc_audit_helper.xlam" -Force
-          Write-Host "✓ Copied XLAM"
+          Write-Host "[OK] Copied XLAM"
 
           # Copy BAT files (user-facing installers)
           $batFiles = @("install.bat", "update.bat", "uninstall.bat")
           foreach ($bat in $batFiles) {
             if (Test-Path $bat) {
               Copy-Item $bat "public-repo/$bat" -Force
-              Write-Host "  ✓ $bat"
+              Write-Host "  Copied $bat"
             }
           }
 
@@ -113,7 +145,7 @@ jobs:
             New-Item -ItemType Directory -Path "public-repo/releases" -Force
           }
           Copy-Item "releases/audit_tool.json" "public-repo/releases/audit_tool.json" -Force
-          Write-Host "✓ Copied manifest"
+          Write-Host "[OK] Copied manifest"
 
           # Copy scripts
           if (-not (Test-Path "public-repo/scripts")) {
@@ -129,14 +161,14 @@ jobs:
           foreach ($script in $userScripts) {
             if (Test-Path "scripts/$script") {
               Copy-Item "scripts/$script" "public-repo/scripts/$script" -Force
-              Write-Host "  ✓ $script"
+              Write-Host "  Copied $script"
             }
           }
 
           # Copy README if exists in public-repo folder
           if (Test-Path "GAFC_Audit_Helper_Release_Public/README.md") {
             Copy-Item "GAFC_Audit_Helper_Release_Public/README.md" "public-repo/README.md" -Force
-            Write-Host "✓ Copied README"
+            Write-Host "[OK] Copied README"
           }
 
           # Create installer ZIP
@@ -154,7 +186,7 @@ jobs:
             "public-repo/scripts/uninstall_audit_helper.ps1"
           ) -DestinationPath $zipPath -Force
 
-          Write-Host "✓ Created installer ZIP"
+          Write-Host "[OK] Created installer ZIP"
 
       - name: Commit to public repo
         shell: pwsh
@@ -164,7 +196,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "Release v${{ steps.version.outputs.VERSION }}" || echo "No changes"
-          git push
+          git push --set-upstream origin main
 
       - name: Create release in public repo
         shell: pwsh
@@ -200,10 +232,10 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "`n============================================" -ForegroundColor Cyan
-          Write-Host "  ✅ RELEASE COMPLETE!" -ForegroundColor Green
+          Write-Host "  Release complete!" -ForegroundColor Green
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host "  Version: v${{ steps.version.outputs.VERSION }}" -ForegroundColor White
           Write-Host "  SHA256: ${{ steps.hash.outputs.SHA256 }}" -ForegroundColor White
-          Write-Host "`n📦 Public Release:" -ForegroundColor Yellow
+          Write-Host "`nPublic Release:" -ForegroundColor Yellow
           Write-Host "  https://github.com/muaroi2002/gafc-audit-helper-releases/releases/tag/v${{ steps.version.outputs.VERSION }}" -ForegroundColor Cyan
-          Write-Host "`n🔄 Manifest updated for auto-update" -ForegroundColor Yellow
+          Write-Host "`nManifest updated for auto-update" -ForegroundColor Yellow
