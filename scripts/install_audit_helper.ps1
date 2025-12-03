@@ -38,10 +38,39 @@ $zoneFile = $target + ":Zone.Identifier"
 if (Test-Path $zoneFile) { Remove-Item $zoneFile -Force }
 
 Write-Host "Installed successfully at: $xlStart" -ForegroundColor Green
-Write-Host "Opening Excel to activate license..." -ForegroundColor Cyan
+
+# Setup auto-update (mandatory for keeping tool up-to-date)
+Write-Host "`nSetting up automatic updates..." -ForegroundColor Cyan
+
+try {
+    $TaskName = "GAFC Audit Helper Auto Update"
+    $UpdateScript = Join-Path $scriptDir "update_audit_helper.ps1"
+    $UpdateInterval = 12  # Hours
+
+    # Remove existing task if present
+    $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existingTask) {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
+
+    # Create scheduled task
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$UpdateScript`""
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) -RepetitionInterval (New-TimeSpan -Hours $UpdateInterval)
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U
+
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Automatically checks for and installs GAFC Audit Helper updates when Excel is not running" | Out-Null
+
+    Write-Host "Auto-update enabled! Updates will check every $UpdateInterval hours." -ForegroundColor Green
+} catch {
+    Write-Host "Warning: Failed to setup auto-update: $_" -ForegroundColor Yellow
+}
+
+Write-Host "`nOpening Excel to activate license..." -ForegroundColor Cyan
 
 # Open Excel with the add-in loaded
 Start-Process "excel.exe"
 
-Write-Host "Done! Please enter your license key when prompted." -ForegroundColor Green
+Write-Host "`nDone! Please enter your license key when prompted." -ForegroundColor Green
+Write-Host "For manual updates, run: update_audit_helper.ps1" -ForegroundColor Gray
 exit 0

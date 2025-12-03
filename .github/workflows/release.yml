@@ -99,6 +99,15 @@ jobs:
           Copy-Item "gafc_audit_helper.xlam" "public-repo/gafc_audit_helper.xlam" -Force
           Write-Host "✓ Copied XLAM"
 
+          # Copy BAT files (user-facing installers)
+          $batFiles = @("install.bat", "update.bat", "uninstall.bat")
+          foreach ($bat in $batFiles) {
+            if (Test-Path $bat) {
+              Copy-Item $bat "public-repo/$bat" -Force
+              Write-Host "  ✓ $bat"
+            }
+          }
+
           # Copy manifest
           if (-not (Test-Path "public-repo/releases")) {
             New-Item -ItemType Directory -Path "public-repo/releases" -Force
@@ -114,9 +123,7 @@ jobs:
           $userScripts = @(
             "install_audit_helper.ps1",
             "update_audit_helper.ps1",
-            "uninstall_audit_helper.ps1",
-            "setup_auto_update.ps1",
-            "remove_auto_update.ps1"
+            "uninstall_audit_helper.ps1"
           )
 
           foreach ($script in $userScripts) {
@@ -139,11 +146,12 @@ jobs:
 
           Compress-Archive -Path @(
             "public-repo/gafc_audit_helper.xlam",
+            "public-repo/install.bat",
+            "public-repo/update.bat",
+            "public-repo/uninstall.bat",
             "public-repo/scripts/install_audit_helper.ps1",
             "public-repo/scripts/update_audit_helper.ps1",
-            "public-repo/scripts/uninstall_audit_helper.ps1",
-            "public-repo/scripts/setup_auto_update.ps1",
-            "public-repo/scripts/remove_auto_update.ps1"
+            "public-repo/scripts/uninstall_audit_helper.ps1"
           ) -DestinationPath $zipPath -Force
 
           Write-Host "✓ Created installer ZIP"
