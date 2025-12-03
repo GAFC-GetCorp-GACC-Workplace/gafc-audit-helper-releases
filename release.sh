@@ -8,6 +8,27 @@ echo "  GAFC Audit Helper - Quick Release"
 echo "============================================"
 echo ""
 
+# Check if token is stored
+TOKEN_FILE=".git/.github_token"
+if [ -f "$TOKEN_FILE" ]; then
+    GITHUB_TOKEN=$(cat "$TOKEN_FILE")
+    echo "✓ Using saved GitHub token"
+else
+    echo "GitHub Personal Access Token not found."
+    read -sp "Enter your GitHub token (will be saved locally): " GITHUB_TOKEN
+    echo ""
+    if [ -z "$GITHUB_TOKEN" ]; then
+        echo "Error: Token required!"
+        exit 1
+    fi
+    # Save token for next time
+    echo "$GITHUB_TOKEN" > "$TOKEN_FILE"
+    chmod 600 "$TOKEN_FILE"
+    echo "✓ Token saved to $TOKEN_FILE"
+fi
+
+echo ""
+
 # Ask for version
 read -p "Enter version number (e.g., 1.0.1): " VERSION
 if [ -z "$VERSION" ]; then
@@ -36,11 +57,11 @@ git tag -a "v$VERSION" -m "Release v$VERSION"
 
 # Step 3: Push commits
 echo "[3/4] Pushing commits..."
-git push origin main
+git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git main
 
 # Step 4: Push tag
 echo "[4/4] Pushing tag (this triggers auto-release)..."
-git push origin "v$VERSION"
+git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git "v$VERSION"
 
 echo ""
 echo "============================================"
