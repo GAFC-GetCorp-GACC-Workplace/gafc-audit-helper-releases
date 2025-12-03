@@ -1,0 +1,30 @@
+# Backup files
+*.bak
+*.tmp
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Excel temp files
+~$*.xls
+~$*.xlsm
+~$*.xlsx
+~$*.xlam
+
+# Compiled / Build
+*.dll
+*.exe
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Test files
+test_*.xlsm
+test_*.xlsx

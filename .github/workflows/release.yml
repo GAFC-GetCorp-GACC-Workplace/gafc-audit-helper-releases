@@ -1,0 +1,201 @@
+name: Auto Release to Public Repo
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags (e.g., v1.0.0, v1.0.1)
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Release version: $version"
+
+      - name: Verify XLAM file exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "gafc_audit_helper.xlam")) {
+            Write-Error "gafc_audit_helper.xlam not found! Build it in Excel first."
+            exit 1
+          }
+          Write-Host "✓ Found gafc_audit_helper.xlam"
+
+      - name: Calculate SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash "gafc_audit_helper.xlam" -Algorithm SHA256).Hash.ToLower()
+          echo "SHA256=$hash" >> $env:GITHUB_OUTPUT
+          Write-Host "SHA256: $hash"
+
+      - name: Update manifest
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $sha256 = "${{ steps.hash.outputs.SHA256 }}"
+          $date = Get-Date -Format "yyyy-MM-dd"
+          $fileSize = (Get-Item "gafc_audit_helper.xlam").Length
+
+          # Read existing manifest to preserve changelog
+          $existingManifest = $null
+          if (Test-Path "releases/audit_tool.json") {
+            $existingManifest = Get-Content "releases/audit_tool.json" -Raw | ConvertFrom-Json
+          }
+
+          $manifest = @{
+            latest = $version
+            download_url = "https://github.com/muaroi2002/gafc-audit-helper-releases/releases/download/v$version/gafc_audit_helper.xlam"
+            sha256 = $sha256
+            release_date = $date
+            release_notes = "Release version $version"
+            changelog = if ($existingManifest.changelog) {
+              $existingManifest.changelog
+            } else {
+              @(
+                "License validation with online/offline grace periods",
+                "State file encryption and checksum validation",
+                "Clock tampering detection",
+                "Hardware fingerprinting with multi-tier fallback",
+                "Dynamic validation intervals based on expiry proximity"
+              )
+            }
+            min_excel_version = "2016"
+            file_size_bytes = $fileSize
+          }
+
+          # Ensure directory exists
+          if (-not (Test-Path "releases")) {
+            New-Item -ItemType Directory -Path "releases" -Force
+          }
+
+          $manifest | ConvertTo-Json -Depth 10 | Set-Content "releases/audit_tool.json" -Encoding UTF8
+          Write-Host "✓ Manifest updated"
+
+      - name: Checkout public repo
+        uses: actions/checkout@v4
+        with:
+          repository: muaroi2002/gafc-audit-helper-releases
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          path: public-repo
+
+      - name: Sync files to public repo
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+
+          # Copy XLAM
+          Copy-Item "gafc_audit_helper.xlam" "public-repo/gafc_audit_helper.xlam" -Force
+          Write-Host "✓ Copied XLAM"
+
+          # Copy manifest
+          if (-not (Test-Path "public-repo/releases")) {
+            New-Item -ItemType Directory -Path "public-repo/releases" -Force
+          }
+          Copy-Item "releases/audit_tool.json" "public-repo/releases/audit_tool.json" -Force
+          Write-Host "✓ Copied manifest"
+
+          # Copy scripts
+          if (-not (Test-Path "public-repo/scripts")) {
+            New-Item -ItemType Directory -Path "public-repo/scripts" -Force
+          }
+
+          $userScripts = @(
+            "install_audit_helper.ps1",
+            "update_audit_helper.ps1",
+            "uninstall_audit_helper.ps1",
+            "setup_auto_update.ps1",
+            "remove_auto_update.ps1"
+          )
+
+          foreach ($script in $userScripts) {
+            if (Test-Path "scripts/$script") {
+              Copy-Item "scripts/$script" "public-repo/scripts/$script" -Force
+              Write-Host "  ✓ $script"
+            }
+          }
+
+          # Copy README if exists in public-repo folder
+          if (Test-Path "GAFC_Audit_Helper_Release_Public/README.md") {
+            Copy-Item "GAFC_Audit_Helper_Release_Public/README.md" "public-repo/README.md" -Force
+            Write-Host "✓ Copied README"
+          }
+
+          # Create installer ZIP
+          Write-Host "`nCreating installer package..."
+          $zipPath = "public-repo/gafc_audit_helper_installer.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+
+          Compress-Archive -Path @(
+            "public-repo/gafc_audit_helper.xlam",
+            "public-repo/scripts/install_audit_helper.ps1",
+            "public-repo/scripts/update_audit_helper.ps1",
+            "public-repo/scripts/uninstall_audit_helper.ps1",
+            "public-repo/scripts/setup_auto_update.ps1",
+            "public-repo/scripts/remove_auto_update.ps1"
+          ) -DestinationPath $zipPath -Force
+
+          Write-Host "✓ Created installer ZIP"
+
+      - name: Commit to public repo
+        shell: pwsh
+        run: |
+          cd public-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Release v${{ steps.version.outputs.VERSION }}" || echo "No changes"
+          git push
+
+      - name: Create release in public repo
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          cd public-repo
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $sha256 = "${{ steps.hash.outputs.SHA256 }}"
+
+          $notes = "## GAFC Audit Helper v$version`n`n"
+          $notes += "### Features`n"
+          $notes += "- License validation with online/offline grace periods`n"
+          $notes += "- State file encryption and checksum validation`n"
+          $notes += "- Clock tampering detection`n"
+          $notes += "- Hardware fingerprinting with multi-tier fallback`n"
+          $notes += "- Dynamic validation intervals`n`n"
+          $notes += "### Installation`n`n"
+          $notes += "Download gafc_audit_helper_installer.zip, extract and run install_audit_helper.ps1`n`n"
+          $notes += "### SHA256 Hash`n``````n$sha256`n``````n`n"
+          $notes += "See README.md for full documentation."
+
+          $notes | Out-File -FilePath "release_notes.md" -Encoding UTF8
+
+          gh release delete "v$version" --yes 2>$null
+          git push origin ":refs/tags/v$version" 2>$null
+
+          gh release create "v$version" gafc_audit_helper.xlam gafc_audit_helper_installer.zip --title "Release v$version" --notes-file "release_notes.md"
+
+          Write-Host "Release created in public repo!"
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "`n============================================" -ForegroundColor Cyan
+          Write-Host "  ✅ RELEASE COMPLETE!" -ForegroundColor Green
+          Write-Host "============================================" -ForegroundColor Cyan
+          Write-Host "  Version: v${{ steps.version.outputs.VERSION }}" -ForegroundColor White
+          Write-Host "  SHA256: ${{ steps.hash.outputs.SHA256 }}" -ForegroundColor White
+          Write-Host "`n📦 Public Release:" -ForegroundColor Yellow
+          Write-Host "  https://github.com/muaroi2002/gafc-audit-helper-releases/releases/tag/v${{ steps.version.outputs.VERSION }}" -ForegroundColor Cyan
+          Write-Host "`n🔄 Manifest updated for auto-update" -ForegroundColor Yellow
