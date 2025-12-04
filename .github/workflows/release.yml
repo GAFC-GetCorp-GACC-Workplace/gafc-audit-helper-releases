@@ -179,14 +179,13 @@ jobs:
           # Change to public-repo directory to create ZIP with correct structure
           Push-Location "public-repo"
           try {
+            # Compress files and folders (scripts/ folder will be preserved)
             Compress-Archive -Path @(
               "gafc_audit_helper.xlam",
               "install.bat",
               "update.bat",
               "uninstall.bat",
-              "scripts/install_audit_helper.ps1",
-              "scripts/update_audit_helper.ps1",
-              "scripts/uninstall_audit_helper.ps1"
+              "scripts"
             ) -DestinationPath $zipPath -Force
             Write-Host "[OK] Created installer ZIP with correct structure"
           } finally {
