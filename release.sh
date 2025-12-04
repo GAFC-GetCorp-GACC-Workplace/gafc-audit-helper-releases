@@ -44,14 +44,14 @@ fi
 
 echo ""
 
-# Show current version from manifest
-CURRENT_VERSION=""
-if [ -f "releases/audit_tool.json" ]; then
-    CURRENT_VERSION=$(grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' releases/audit_tool.json | cut -d'"' -f4)
-    if [ -n "$CURRENT_VERSION" ]; then
-        echo "Current version in manifest: $CURRENT_VERSION"
-        echo ""
-    fi
+# Show current version from git tags
+CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+if [ -n "$CURRENT_VERSION" ]; then
+    echo "Current version (latest git tag): $CURRENT_VERSION"
+    echo ""
+else
+    echo "No previous version found"
+    echo ""
 fi
 
 # Ask for version
