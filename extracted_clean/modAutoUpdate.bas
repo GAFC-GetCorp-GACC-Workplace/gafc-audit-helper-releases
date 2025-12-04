@@ -7,6 +7,12 @@ Option Explicit
 Private Const MANIFEST_URL As String = "https://raw.githubusercontent.com/muaroi2002/gafc-audit-helper-releases/main/releases/audit_tool.json"
 Private Const UPDATE_CHECK_INTERVAL_DAYS As Double = 1  ' Check daily
 
+' Type must be declared at module level, before any procedures
+Private Type UpdateState
+    lastCheckDate As Date
+    skipVersion As String
+End Type
+
 ' Get version from XLAM custom properties (set during build)
 Private Function CURRENT_VERSION() As String
     On Error Resume Next
@@ -20,11 +26,6 @@ Private Function CURRENT_VERSION() As String
     End If
     On Error GoTo 0
 End Function
-
-Private Type UpdateState
-    lastCheckDate As Date
-    skipVersion As String
-End Type
 
 ' Main entry point - call from Workbook_Open
 Public Sub CheckForUpdates(Optional ByVal forceCheck As Boolean = False)
