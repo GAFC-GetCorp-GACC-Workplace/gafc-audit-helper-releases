@@ -44,12 +44,59 @@ fi
 
 echo ""
 
-# Ask for version
-read -p "Enter version number (e.g., 1.0.1): " VERSION
-if [ -z "$VERSION" ]; then
-    echo "Error: Version required!"
-    exit 1
+# Show current version from manifest
+CURRENT_VERSION=""
+if [ -f "releases/audit_tool.json" ]; then
+    CURRENT_VERSION=$(grep -o '"latest"[[:space:]]*:[[:space:]]*"[^"]*"' releases/audit_tool.json | cut -d'"' -f4)
+    if [ -n "$CURRENT_VERSION" ]; then
+        echo "Current version in manifest: $CURRENT_VERSION"
+        echo ""
+    fi
 fi
+
+# Ask for version
+while true; do
+    read -p "Enter version number (e.g., 1.0.1): " VERSION
+    if [ -z "$VERSION" ]; then
+        echo "Error: Version required!"
+        exit 1
+    fi
+
+    # Check if version already exists (check both repos)
+    TAG_EXISTS_LOCAL=$(git tag -l "v$VERSION")
+    TAG_EXISTS_REMOTE=$(git ls-remote --tags origin "refs/tags/v$VERSION" 2>/dev/null)
+
+    if [ -n "$TAG_EXISTS_LOCAL" ] || [ -n "$TAG_EXISTS_REMOTE" ]; then
+        echo ""
+        echo "⚠ Warning: Version v$VERSION already exists!"
+        read -p "Do you want to re-release (delete old and create new)? (Y/N): " CONFIRM
+        echo ""
+
+        if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+            echo "Cleaning up existing v$VERSION..."
+
+            # Delete from private repo
+            git tag -d "v$VERSION" 2>/dev/null || true
+            git push origin ":refs/tags/v$VERSION" 2>/dev/null || true
+
+            # Delete from public repo
+            if command -v gh &> /dev/null; then
+                gh release delete "v$VERSION" -R muaroi2002/gafc-audit-helper-releases --yes 2>/dev/null || true
+                gh api repos/muaroi2002/gafc-audit-helper-releases/git/refs/tags/v$VERSION -X DELETE 2>/dev/null || true
+            fi
+
+            echo "✓ Old version cleaned up"
+            echo ""
+            break
+        else
+            echo "Please enter a different version number."
+            echo ""
+            continue
+        fi
+    else
+        break
+    fi
+done
 
 # Ask for release message
 read -p "Enter release message (optional): " MESSAGE
