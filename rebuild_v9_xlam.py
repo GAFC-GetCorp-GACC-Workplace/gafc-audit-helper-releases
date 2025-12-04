@@ -62,6 +62,9 @@ def rebuild():
         files = list(MODULE_DIR.glob("*.bas")) + list(MODULE_DIR.glob("*.cls")) + list(MODULE_DIR.glob("*.frm"))
         for path in sorted(files, key=lambda p: p.name.lower()):
             stem = path.stem.lower()
+            # Skip backup files, empty files, and document modules
+            if ".bak" in path.name.lower():
+                continue
             if path.stat().st_size == 0:
                 # Skip empty placeholders (Sheet*.cls are exported as 0 bytes)
                 continue
@@ -69,6 +72,32 @@ def rebuild():
                 continue
             print(f"Importing: {path.name}")
             vb_proj.VBComponents.Import(str(path))
+
+        # Set version from manifest
+        import json
+        manifest_path = BASE_DIR / "releases" / "audit_tool.json"
+        version = "1.0.3"  # Default fallback
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    manifest = json.load(f)
+                    version = manifest.get('latest', version)
+                print(f"Setting version from manifest: {version}")
+            except Exception as e:
+                print(f"Warning: Could not read manifest, using default version {version}: {e}")
+
+        # Set custom document property for version
+        try:
+            props = wb.CustomDocumentProperties
+            # Try to update existing property
+            try:
+                props.Item("Version").Value = version
+            except:
+                # Property doesn't exist, create it
+                props.Add("Version", False, 4, version)  # 4 = msoPropertyTypeString
+            print(f"Set Version property to: {version}")
+        except Exception as e:
+            print(f"Warning: Could not set Version property: {e}")
 
         wb.Save()
         wb.Close(SaveChanges=True)
