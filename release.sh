@@ -29,6 +29,21 @@ fi
 
 echo ""
 
+# Step 0: Auto-sync from XLSTART
+echo "[0/4] Syncing latest code from XLSTART..."
+XLSTART="$APPDATA/Microsoft/Excel/XLSTART"
+XLAM_NAME="gafc_audit_helper.xlam"
+SOURCE="$XLSTART/$XLAM_NAME"
+TARGET="$(pwd)/$XLAM_NAME"
+
+if [ -f "$SOURCE" ]; then
+    cp -f "$SOURCE" "$TARGET" 2>/dev/null && echo "  ✓ Code synced from XLSTART" || echo "  ⚠ Could not sync (file may be in use)"
+else
+    echo "  ⚠ XLAM not found in XLSTART (skip sync)"
+fi
+
+echo ""
+
 # Ask for version
 read -p "Enter version number (e.g., 1.0.1): " VERSION
 if [ -z "$VERSION" ]; then
