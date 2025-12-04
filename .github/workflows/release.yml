@@ -173,20 +173,25 @@ jobs:
 
           # Create installer ZIP
           Write-Host "`nCreating installer package..."
-          $zipPath = "public-repo/gafc_audit_helper_installer.zip"
-          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          $zipPath = "gafc_audit_helper_installer.zip"
+          if (Test-Path "public-repo/$zipPath") { Remove-Item "public-repo/$zipPath" -Force }
 
-          Compress-Archive -Path @(
-            "public-repo/gafc_audit_helper.xlam",
-            "public-repo/install.bat",
-            "public-repo/update.bat",
-            "public-repo/uninstall.bat",
-            "public-repo/scripts/install_audit_helper.ps1",
-            "public-repo/scripts/update_audit_helper.ps1",
-            "public-repo/scripts/uninstall_audit_helper.ps1"
-          ) -DestinationPath $zipPath -Force
-
-          Write-Host "[OK] Created installer ZIP"
+          # Change to public-repo directory to create ZIP with correct structure
+          Push-Location "public-repo"
+          try {
+            Compress-Archive -Path @(
+              "gafc_audit_helper.xlam",
+              "install.bat",
+              "update.bat",
+              "uninstall.bat",
+              "scripts/install_audit_helper.ps1",
+              "scripts/update_audit_helper.ps1",
+              "scripts/uninstall_audit_helper.ps1"
+            ) -DestinationPath $zipPath -Force
+            Write-Host "[OK] Created installer ZIP with correct structure"
+          } finally {
+            Pop-Location
+          }
 
       - name: Commit to public repo
         shell: pwsh
