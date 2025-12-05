@@ -133,8 +133,8 @@ def rebuild():
                     # Replace fallback version in code
                     import re
                     actual_code = re.sub(
-                        r'CURRENT_VERSION\s*=\s*"[\d\.]+"',
-                        f'CURRENT_VERSION = "{current_ver}"',
+                        r'(CURRENT_VERSION\s*=\s*)"[\d\.]+"',
+                        rf'\1"{current_ver}"',
                         actual_code
                     )
 
@@ -180,36 +180,30 @@ def rebuild():
                     except:
                         pass
 
-                # Replace patterns like: CURRENT_VERSION = "1.0.3"
+                # Replace patterns like: CURRENT_VERSION = "1.0.3"  ' comment
                 content = re.sub(
-                    r'CURRENT_VERSION\s*=\s*"[\d\.]+"',
-                    f'CURRENT_VERSION = "{current_ver_all}"',
+                    r'(CURRENT_VERSION\s*=\s*)"[\d\.]+"',
+                    rf'\1"{current_ver_all}"',
                     content
                 )
 
-                # Check if Attribute VB_Name exists
+                # Check if Attribute VB_Name exists and add if missing
                 if 'Attribute VB_Name' not in content:
-                    print(f"Fixing missing Attribute for: {path.name}")
-                    # Add Attribute VB_Name at the beginning
                     module_name = path.stem
                     attribute_line = f'Attribute VB_Name = "{module_name}"\n'
-                    fixed_content = attribute_line + content
+                    content = attribute_line + content
 
-                    # Write to temporary file
-                    temp_path = path.parent / f"{path.stem}_temp{path.suffix}"
-                    with open(temp_path, 'w', encoding='utf-8') as f:
-                        f.write(fixed_content)
+                # Always write to temp file (to apply version replacement)
+                temp_path = path.parent / f"{path.stem}_temp{path.suffix}"
+                with open(temp_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
 
-                    # Import from temp file
-                    print(f"Importing: {path.name}")
-                    vb_proj.VBComponents.Import(str(temp_path))
+                # Import from temp file
+                print(f"Importing: {path.name}")
+                vb_proj.VBComponents.Import(str(temp_path))
 
-                    # Delete temp file
-                    temp_path.unlink()
-                else:
-                    # Normal import
-                    print(f"Importing: {path.name}")
-                    vb_proj.VBComponents.Import(str(path))
+                # Delete temp file
+                temp_path.unlink()
             except Exception as e:
                 print(f"  [WARNING] Could not import {path.name}: {e}")
 
@@ -226,20 +220,23 @@ def rebuild():
             except Exception as e:
                 print(f"Warning: Could not read manifest, using default version {version}: {e}")
 
-        # Set custom document property for version
+        # Save first, then set custom document property
+        wb.Save()
+
         try:
             props = wb.CustomDocumentProperties
             # Try to update existing property
             try:
                 props.Item("Version").Value = version
+                print(f"Updated Version property to: {version}")
             except:
                 # Property doesn't exist, create it
                 props.Add("Version", False, 4, version)  # 4 = msoPropertyTypeString
-            print(f"Set Version property to: {version}")
+                print(f"Created Version property: {version}")
+            wb.Save()  # Save again after setting property
         except Exception as e:
             print(f"Warning: Could not set Version property: {e}")
 
-        wb.Save()
         wb.Close(SaveChanges=True)
         excel.Quit()
         print(f"Done. Output: {OUTPUT_XLAM}")
