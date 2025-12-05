@@ -29,17 +29,24 @@ fi
 
 echo ""
 
-# Step 0: Auto-sync from XLSTART
-echo "[0/4] Syncing latest code from XLSTART..."
-XLSTART="$APPDATA/Microsoft/Excel/XLSTART"
-XLAM_NAME="gafc_audit_helper.xlam"
-SOURCE="$XLSTART/$XLAM_NAME"
-TARGET="$(pwd)/$XLAM_NAME"
+# Step 0: Check for uncommitted changes in extracted_clean
+echo "[0/4] Checking for local code changes..."
+if git diff --quiet extracted_clean/; then
+    # No changes in extracted_clean, safe to sync from XLSTART
+    echo "  No local changes detected. Syncing from XLSTART..."
+    XLSTART="$APPDATA/Microsoft/Excel/XLSTART"
+    XLAM_NAME="gafc_audit_helper.xlam"
+    SOURCE="$XLSTART/$XLAM_NAME"
+    TARGET="$(pwd)/$XLAM_NAME"
 
-if [ -f "$SOURCE" ]; then
-    cp -f "$SOURCE" "$TARGET" 2>/dev/null && echo "  ✓ Code synced from XLSTART" || echo "  ⚠ Could not sync (file may be in use)"
+    if [ -f "$SOURCE" ]; then
+        cp -f "$SOURCE" "$TARGET" 2>/dev/null && echo "  ✓ Code synced from XLSTART" || echo "  ⚠ Could not sync (file may be in use)"
+    else
+        echo "  ⚠ XLAM not found in XLSTART (skip sync)"
+    fi
 else
-    echo "  ⚠ XLAM not found in XLSTART (skip sync)"
+    echo "  ⚠ Local changes detected in extracted_clean/"
+    echo "  Skipping XLSTART sync to preserve your changes."
 fi
 
 echo ""
