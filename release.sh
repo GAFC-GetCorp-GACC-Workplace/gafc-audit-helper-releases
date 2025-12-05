@@ -98,31 +98,54 @@ while true; do
     fi
 done
 
-# Ask for release message
-read -p "Enter release message (optional): " MESSAGE
-if [ -z "$MESSAGE" ]; then
-    MESSAGE="Release version $VERSION"
-fi
-
 echo ""
 echo "Creating release v$VERSION..."
 echo ""
 
-# Step 1: Add and commit changes
-echo "[1/4] Committing changes..."
-git add .
-git commit -m "Release v$VERSION - $MESSAGE" || echo "No changes to commit"
+# Step 1: Build XLAM with new version
+echo "[1/5] Building XLAM..."
+# Update manifest first
+MANIFEST_FILE="releases/audit_tool.json"
+if [ -f "$MANIFEST_FILE" ]; then
+    # Use Python to update manifest JSON
+    python -c "
+import json
+with open('$MANIFEST_FILE', 'r', encoding='utf-8') as f:
+    manifest = json.load(f)
+manifest['latest'] = '$VERSION'
+with open('$MANIFEST_FILE', 'w', encoding='utf-8') as f:
+    json.dump(manifest, f, indent=2, ensure_ascii=False)
+"
+    echo "  ✓ Updated manifest to version $VERSION"
+else
+    echo "  ⚠ Warning: Manifest not found, skipping manifest update"
+fi
 
-# Step 2: Create tag
-echo "[2/4] Creating tag v$VERSION..."
+# Build XLAM
+python rebuild_xlam.py
+if [ $? -eq 0 ] && [ -f "gafc_audit_helper_new.xlam" ]; then
+    cp -f "gafc_audit_helper_new.xlam" "gafc_audit_helper.xlam"
+    echo "  ✓ XLAM built successfully"
+else
+    echo "  ✗ Build failed! Please fix errors and try again."
+    exit 1
+fi
+
+# Step 2: Add and commit changes
+echo "[2/5] Committing changes..."
+git add .
+git commit -m "build: release version $VERSION" || echo "No changes to commit"
+
+# Step 3: Create tag
+echo "[3/5] Creating tag v$VERSION..."
 git tag -a "v$VERSION" -m "Release v$VERSION"
 
-# Step 3: Push commits
-echo "[3/4] Pushing commits..."
+# Step 4: Push commits
+echo "[4/5] Pushing commits..."
 git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git main
 
-# Step 4: Push tag
-echo "[4/4] Pushing tag (this triggers auto-release)..."
+# Step 5: Push tag
+echo "[5/5] Pushing tag (this triggers auto-release)..."
 git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git "v$VERSION"
 
 echo ""
