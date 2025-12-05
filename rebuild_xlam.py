@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Rebuild chuyen_dau_ki_v9.xlam using modules in extracted_clean (including modLicenseAudit).
-Creates chuyen_dau_ki_v9_new.xlam alongside the original.
+Rebuild gafc_audit_helper.xlam using modules in extracted_clean.
+Creates gafc_audit_helper_new.xlam alongside the original.
 """
 from pathlib import Path
 import shutil
@@ -14,8 +14,8 @@ except ImportError:
     sys.exit(1)
 
 BASE_DIR = Path(__file__).resolve().parent
-SOURCE_XLAM = BASE_DIR / "chuyen_dau_ki_v9.xlam"
-OUTPUT_XLAM = BASE_DIR / "chuyen_dau_ki_v9_new.xlam"
+SOURCE_XLAM = BASE_DIR / "gafc_audit_helper.xlam"
+OUTPUT_XLAM = BASE_DIR / "gafc_audit_helper_new.xlam"
 MODULE_DIR = BASE_DIR / "extracted_clean"
 
 VBEXT_CT_STD_MODULE = 1

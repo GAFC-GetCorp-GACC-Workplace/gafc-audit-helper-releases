@@ -1,44 +1,4 @@
 Option Explicit
-Public Sub Test_Tao_Mau()
-    Tao_NKC Nothing
-End Sub
-Public Sub Tao_Mau_TB(control As IRibbonControl)
-    Dim wb As Workbook
-    Dim wsTB As Worksheet
-    Set wb = Workbooks.Add
-    Set wsTB = wb.Sheets(1)
-    With wsTB
-        .Name = "TB"
-        .Cells(2, 5).Value = ChrW(272) & ChrW(7847) & "u k" & ChrW(7923)
-        .Cells(2, 7).Value = "Ph" & ChrW(225) & "t sinh"
-        .Cells(2, 9).Value = "Cu" & ChrW(7889) & "i k" & ChrW(7923)
-        .Cells(2, 5).Font.Bold = True
-        .Cells(2, 7).Font.Bold = True
-        .Cells(2, 9).Font.Bold = True
-        .Cells(3, 1).Value = "Ph" & ChrW(226) & "n c" & ChrW(244) & "ng"
-        .Cells(3, 2).Value = "C" & ChrW(7845) & "p TK"
-        .Cells(3, 3).Value = "TK"
-        .Cells(3, 4).Value = "T" & ChrW(234) & "n TK"
-        .Cells(3, 5).Value = "N" & ChrW(7907)
-        .Cells(3, 6).Value = "C" & ChrW(243)
-        .Cells(3, 7).Value = "N" & ChrW(7907)
-        .Cells(3, 8).Value = "C" & ChrW(243)
-        .Cells(3, 9).Value = "N" & ChrW(7907)
-        .Cells(3, 10).Value = "C" & ChrW(243)
-        .Range("A3:J3").Font.Bold = True
-        .Range("A3:J3").Interior.Color = RGB(220, 230, 241)
-        .Range("A3:J3").AutoFilter
-        .Columns("A:A").ColumnWidth = 12  ' phan cong (PC)
-        .Columns("B:B").ColumnWidth = 8   ' TK (3 digits)
-        .Columns("C:C").ColumnWidth = 18  ' TK' (full code)
-        .Columns("D:D").ColumnWidth = 35  ' Ten TK
-        .Columns("E:J").ColumnWidth = 15  ' Number columns
-        .Rows(4).Select
-        ActiveWindow.FreezePanes = True
-        .Cells(4, 1).Select
-    End With
-    ' silent
-End Sub
 Public Sub Tao_TH(control As IRibbonControl)
     Dim wb As Workbook
     Dim wsAfter As Worksheet

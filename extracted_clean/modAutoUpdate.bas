@@ -159,20 +159,33 @@ End Sub
 Private Sub DownloadAndInstall(ByVal downloadUrl As String, ByVal newVersion As String)
     On Error GoTo ErrorHandler
 
-    ' Use PowerShell script for update
-    Dim xlstartPath As String
-    xlstartPath = Application.StartupPath
+    ' Download update script from GitHub to temp folder
+    Dim scriptUrl As String
+    scriptUrl = "https://raw.githubusercontent.com/muaroi2002/gafc-audit-helper-releases/main/scripts/update_audit_helper.ps1"
+
+    Dim tempFolder As String
+    tempFolder = Environ("TEMP") & "\gafc_update"
 
     Dim updateScript As String
-    updateScript = xlstartPath & "\..\..\update_audit_helper.ps1"
+    updateScript = tempFolder & "\update_audit_helper.ps1"
 
-    ' Check if script exists in common locations
-    If Dir(updateScript) = "" Then
-        updateScript = Environ("USERPROFILE") & "\Downloads\gafc_audit_helper_installer\scripts\update_audit_helper.ps1"
-    End If
+    ' Create temp folder if not exists
+    On Error Resume Next
+    MkDir tempFolder
+    On Error GoTo ErrorHandler
 
+    ' Download script using PowerShell
+    Dim downloadCmd As String
+    downloadCmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command " & _
+                  """Invoke-WebRequest -Uri '" & scriptUrl & "' -OutFile '" & updateScript & "' -UseBasicParsing"""
+
+    Shell downloadCmd, vbHide
+
+    ' Wait for download to complete
+    Application.Wait Now + TimeValue("00:00:03")
+
+    ' Run update script if downloaded successfully
     If Dir(updateScript) <> "" Then
-        ' Run PowerShell update script silently in background
         Dim cmd As String
         cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & updateScript & """"
 
@@ -183,8 +196,7 @@ Private Sub DownloadAndInstall(ByVal downloadUrl As String, ByVal newVersion As 
         Application.OnTime Now + TimeValue("00:00:02"), "CloseExcelForUpdate"
     Else
         ' Fallback: open download page
-        MsgBox "Cannot find update script. Please download manually from GitHub.", vbExclamation
-
+        MsgBox "Cannot download update. Please download manually from GitHub.", vbExclamation
         Shell "explorer.exe https://github.com/muaroi2002/gafc-audit-helper-releases/releases/latest", vbNormalFocus
     End If
 

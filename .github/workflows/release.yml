@@ -23,14 +23,44 @@ jobs:
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "Release version: $version"
 
-      - name: Verify XLAM file exists
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
         shell: pwsh
         run: |
-          if (-not (Test-Path "gafc_audit_helper.xlam")) {
-            Write-Error "gafc_audit_helper.xlam not found! Build it in Excel first."
+          python -m pip install --upgrade pip
+          pip install pywin32
+
+      - name: Update manifest with new version
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $manifestPath = "releases/audit_tool.json"
+
+          if (Test-Path $manifestPath) {
+            $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+            $manifest.latest = $version
+            $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -Encoding UTF8
+            Write-Host "[OK] Updated manifest to version $version"
+          } else {
+            Write-Error "Manifest not found at $manifestPath"
             exit 1
           }
-          Write-Host "[OK] Found gafc_audit_helper.xlam"
+
+      - name: Build XLAM with new version
+        shell: pwsh
+        run: |
+          Write-Host "Building XLAM with version ${{ steps.version.outputs.VERSION }}..."
+          python rebuild_xlam.py
+          if (-not (Test-Path "gafc_audit_helper_new.xlam")) {
+            Write-Error "Build failed: gafc_audit_helper_new.xlam not found"
+            exit 1
+          }
+          Copy-Item "gafc_audit_helper_new.xlam" "gafc_audit_helper.xlam" -Force
+          Write-Host "[OK] XLAM built successfully"
 
       - name: Calculate SHA256
         id: hash
