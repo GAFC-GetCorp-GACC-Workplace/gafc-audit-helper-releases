@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tao_format_NKC"
 Option Explicit
 Public Sub Tao_for_NKC(control As IRibbonControl)
     Dim wb As Workbook
@@ -6,36 +7,37 @@ Public Sub Tao_for_NKC(control As IRibbonControl)
     Dim i As Integer
     ' T?o m?t workbook m?i
     Set wb = Workbooks.Add
-    ' X√≥a c√°c sheet m?c d?nh (n?u c?n)
+    ' XÛa c·c sheet m?c d?nh (n?u c?n)
     Application.DisplayAlerts = False
     Do While wb.Sheets.Count > 1
         wb.Sheets(2).Delete
     Loop
     Application.DisplayAlerts = True
-    ' √ê?t t√™n sheet d?u ti√™n l√† "NKC"
+    ' –?t tÍn sheet d?u tiÍn l‡ "NKC"
     Set ws = wb.Sheets(1)
     ws.Name = "NKC"
     ws.Activate
-    ' Khai b√°o danh s√°ch ti√™u d?
+    ' Khai b·o danh s·ch tiÍu d?
     header = Array("Ng" & ChrW(224) & "y h" & ChrW(7841) & "ch to" & ChrW(225) & "n", "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915), "Th" & ChrW(225) & "ng", _
-                   "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n", "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i", "N" & ChrW(7907), "C√≥", "N" & ChrW(7907) & " TK", "C√≥ TK", _
+                   "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n", "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i", "N" & ChrW(7907), "CÛ", "N" & ChrW(7907) & " TK", "CÛ TK", _
                    "S" & ChrW(7889) & " ti" & ChrW(7873) & "n", "M" & ChrW(227) & " " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "T" & ChrW(234) & "n " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "Code")
-    ' Ghi ti√™u d? v√†o h√†ng 2
+    ' Ghi tiÍu d? v‡o h‡ng 2
     For i = LBound(header) To UBound(header)
         ws.Cells(2, i + 1).Value = header(i)
     Next i
-    ' √ê?nh d?ng ti√™u d?
+    ' –?nh d?ng tiÍu d?
     With ws.Range("A2:M2")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
         .Interior.Color = RGB(200, 200, 200)
         .Borders.LineStyle = xlContinuous
     End With
-    ' B?t AutoFilter cho h√†ng 2
+    ' B?t AutoFilter cho h‡ng 2
     ws.Range("A2:M2").AutoFilter
     ' T? d?ng di?u ch?nh d? r?ng c?t
     ws.Columns("A:M").AutoFit
-    ' K√≠ch ho?t workbook m?i
+    ' KÌch ho?t workbook m?i
     wb.Activate
     MsgBox "Done", vbInformation
 End Sub
+

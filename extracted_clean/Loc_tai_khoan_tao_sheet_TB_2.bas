@@ -1,3 +1,4 @@
+Attribute VB_Name = "Loc_tai_khoan_tao_sheet_TB_2"
 Option Explicit
 Public Sub Xuly(control As IRibbonControl)
     ' ? Tang t?c
@@ -14,15 +15,15 @@ Public Sub Xuly(control As IRibbonControl)
     Dim i As Long
     Dim tkFull As Variant, tkKey As String
     Dim specialAccounts As Variant, k As Variant, tkSpecial As Variant
-    ' ? Danh s√°ch t√†i kho?n d?c bi?t
+    ' ? Danh s·ch t‡i kho?n d?c bi?t
     specialAccounts = Array("2141", "2142", "2143", "4211", "4212", "2147", _
                             "2421", "2422", "8211", "8212", "2441", "2442", _
                             "3411", "3412", "2444", "2291", "2292", "2293", "2294")
-    ' ? √êua v√†o Dictionary
+    ' ? –ua v‡o Dictionary
     For i = LBound(specialAccounts) To UBound(specialAccounts)
         specialDict(specialAccounts(i)) = True
     Next i
-    ' ? Bu?c 1: Luu to√†n b? t√†i kho?n g?c + d√°nh d?u prefix d?c bi?t xu?t hi?n
+    ' ? Bu?c 1: Luu to‡n b? t‡i kho?n g?c + d·nh d?u prefix d?c bi?t xu?t hi?n
     For i = 2 To lastRow
         tkFull = Trim(wsSrc.Cells(i, 1).Value)
         If tkFull <> "" Then
@@ -32,25 +33,25 @@ Public Sub Xuly(control As IRibbonControl)
             End If
         End If
     Next i
-    ' ? Bu?c 2: B? sung m√£ d?c bi?t n?u c√≥ m√£ con xu?t hi?n
+    ' ? Bu?c 2: B? sung m„ d?c bi?t n?u cÛ m„ con xu?t hi?n
     For Each tkSpecial In specialDict.keys
         If Not allTKs.Exists(tkSpecial) Then
             For Each tkFull In allTKs.keys
                 If Left(tkFull, Len(tkSpecial)) = tkSpecial And tkFull <> tkSpecial Then
-                    allTKs.Add tkSpecial, True ' th√™m m√£ d?c bi?t
-                    prefixSpecialInData(Left(tkSpecial, 3)) = True ' d√°nh d?u prefix
+                    allTKs.Add tkSpecial, True ' thÍm m„ d?c bi?t
+                    prefixSpecialInData(Left(tkSpecial, 3)) = True ' d·nh d?u prefix
                     Exit For
                 End If
             Next tkFull
         End If
     Next tkSpecial
-    ' ? Bu?c 3: L?c t√†i kho?n cu?i c√πng
+    ' ? Bu?c 3: L?c t‡i kho?n cu?i c˘ng
     For Each tkFull In allTKs.keys
         If specialDict.Exists(tkFull) Then
-            tkKey = tkFull ' gi? nguy√™n d?c bi?t
+            tkKey = tkFull ' gi? nguyÍn d?c bi?t
         Else
             tkKey = Left(tkFull, 3)
-            ' N?u d√£ c√≥ m√£ d?c bi?t c√πng prefix ? lo?i m√£ g?c
+            ' N?u d„ cÛ m„ d?c bi?t c˘ng prefix ? lo?i m„ g?c
             If prefixSpecialInData.Exists(tkKey) Then
                 tkKey = ""
             End If
@@ -59,7 +60,7 @@ Public Sub Xuly(control As IRibbonControl)
             If Not dict.Exists(tkKey) Then dict.Add tkKey, True
         End If
     Next tkFull
-    ' ? X√≥a sheet TB n?u d√£ c√≥
+    ' ? XÛa sheet TB n?u d„ cÛ
     Application.DisplayAlerts = False
     On Error Resume Next: Worksheets("TB").Delete
     On Error GoTo 0
@@ -67,15 +68,15 @@ Public Sub Xuly(control As IRibbonControl)
     ' ? T?o sheet TB m?i
     Set wsTB = Worksheets.Add
     wsTB.Name = "TB"
-    ' ? Ti√™u d?
-    wsTB.Range("A1:I1").Value = Array("Code1", "Code2", "T" & ChrW(224) & "i kho" & ChrW(7843) & "n", "N" & ChrW(7907), "C√≥", "N" & ChrW(7907), "C√≥", "N" & ChrW(7907), "C√≥")
+    ' ? TiÍu d?
+    wsTB.Range("A1:I1").Value = Array("Code1", "Code2", "T" & ChrW(224) & "i kho" & ChrW(7843) & "n", "N" & ChrW(7907), "CÛ", "N" & ChrW(7907), "CÛ", "N" & ChrW(7907), "CÛ")
     ' ? Ghi d? li?u
     Dim rowIdx As Long: rowIdx = 2
     For Each k In dict.keys
         wsTB.Cells(rowIdx, 3).Value = k
         rowIdx = rowIdx + 1
     Next k
-    ' ? √ê?nh d?ng
+    ' ? –?nh d?ng
     With wsTB.Range("A1:I1")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
@@ -88,3 +89,4 @@ Public Sub Xuly(control As IRibbonControl)
     Application.EnableEvents = True
     MsgBox "Done", vbInformation
 End Sub
+

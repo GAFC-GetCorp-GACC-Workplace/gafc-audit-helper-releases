@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tao_pivot"
 Option Explicit
 Sub Tao_Pivot_AnToan()
     Dim wb As Workbook
@@ -18,7 +19,7 @@ Sub Tao_Pivot_AnToan()
         MsgBox "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y sheet 'NKC'.", vbExclamation
         Exit Sub
     End If
-    ' XÃ¡c d?nh vÃ¹ng d? li?u: t? A2 t?i Ã´ cu?i cÃ¹ng cÃ³ d? li?u (b?t k? c?t)
+    ' Xác d?nh vùng d? li?u: t? A2 t?i ô cu?i cùng có d? li?u (b?t k? c?t)
     lastRow = wsData.Cells.Find(What:="*", LookIn:=xlValues, _
                 SearchOrder:=xlByRows, SearchDirection:=xlPrevious).Row
     lastCol = wsData.Cells.Find(What:="*", LookIn:=xlValues, _
@@ -28,15 +29,15 @@ Sub Tao_Pivot_AnToan()
         Exit Sub
     End If
     Set dataRange = wsData.Range(wsData.Cells(2, 1), wsData.Cells(lastRow, lastCol))
-    ' L?y tÃªn header t? hÃ ng 2 (d?m b?o dÃ¹ng dÃºng chÃ­nh t? trÃªn sheet)
+    ' L?y tên header t? hàng 2 (d?m b?o dùng dúng chính t? trên sheet)
     Set rngHeaders = wsData.Rows(2)
-    ' N?u c?t c? d?nh v? trÃ­ (A..M), cÃ³ th? d?c theo index:
+    ' N?u c?t c? d?nh v? trí (A..M), có th? d?c theo index:
     hdrN_Thang = Trim(CStr(wsData.Cells(2, 3).Value))        ' c?t C
     hdrN_No = Trim(CStr(wsData.Cells(2, 6).Value))           ' c?t F (N?)
-    hdrN_Co = Trim(CStr(wsData.Cells(2, 7).Value))           ' c?t G (CÃ³)
+    hdrN_Co = Trim(CStr(wsData.Cells(2, 7).Value))           ' c?t G (Có)
     hdrN_NoTK = Trim(CStr(wsData.Cells(2, 8).Value))         ' c?t H (N? TK)
-    hdrN_CoTK = Trim(CStr(wsData.Cells(2, 9).Value))         ' c?t I (CÃ³ TK)
-    hdrN_PhatSinh = Trim(CStr(wsData.Cells(2, 10).Value))    ' c?t J (PhÃ¡t sinh N?)
+    hdrN_CoTK = Trim(CStr(wsData.Cells(2, 9).Value))         ' c?t I (Có TK)
+    hdrN_PhatSinh = Trim(CStr(wsData.Cells(2, 10).Value))    ' c?t J (Phát sinh N?)
     ' Ki?m tra t?n t?i header thi?t y?u
     If hdrN_Thang = "" Or hdrN_No = "" Or hdrN_Co = "" Or hdrN_PhatSinh = "" Then
         MsgBox "M" & ChrW(7897) & "t ho" & ChrW(7863) & "c nhi" & ChrW(7873) & "u ti" & ChrW(234) & "u " & ChrW(273) & ChrW(7873) & " c" & ChrW(7847) & "n thi" & ChrW(7871) & "t b" & ChrW(7883) & " tr" & ChrW(7889) & "ng. Ki" & ChrW(7875) & "m tra h" & ChrW(224) & "ng ti" & ChrW(234) & "u " & ChrW(273) & ChrW(7873) & " (d" & ChrW(242) & "ng 2)."", vbExclamation"
@@ -44,7 +45,7 @@ Sub Tao_Pivot_AnToan()
     End If
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
-    ' XÃ³a sheet cu n?u t?n t?i
+    ' Xóa sheet cu n?u t?n t?i
     On Error Resume Next
     wb.Worksheets("PV").Delete
     wb.Worksheets("PVCT").Delete
@@ -52,19 +53,19 @@ Sub Tao_Pivot_AnToan()
     ' T?o sheet PV
     Set wsPV = wb.Worksheets.Add(After:=wsData)
     wsPV.Name = "PV"
-    ' T?o PivotCache t? Range object (an toÃ n)
+    ' T?o PivotCache t? Range object (an toàn)
     Set pc = wb.PivotCaches.Create(SourceType:=xlDatabase, SourceData:=dataRange)
-    ' Pivot 1 trÃªn PV (? A4)
+    ' Pivot 1 trên PV (? A4)
     Set pt = wsPV.PivotTables.Add(PivotCache:=pc, TableDestination:=wsPV.Range("A4"), TableName:="PT_PV_1")
     With pt
-        ' S? d?ng tÃªn header l?y t? sheet d? trÃ¡nh l?i do kÃ½ t?
+        ' S? d?ng tên header l?y t? sheet d? tránh l?i do ký t?
         .PivotFields(hdrN_No).Orientation = xlPageField
         .PivotFields(hdrN_Thang).Orientation = xlRowField
         .PivotFields(hdrN_Co).Orientation = xlColumnField
         .AddDataField .PivotFields(hdrN_PhatSinh), "T" & ChrW(7893) & "ng ti" & ChrW(7873) & "n", xlSum
         .DataBodyRange.NumberFormat = "#,##0"
     End With
-    ' Pivot 2 trÃªn PV (? A26) - d?i filter/column
+    ' Pivot 2 trên PV (? A26) - d?i filter/column
     Set pt = wsPV.PivotTables.Add(PivotCache:=pc, TableDestination:=wsPV.Range("A26"), TableName:="PT_PV_2")
     With pt
         .PivotFields(hdrN_Co).Orientation = xlPageField
@@ -76,7 +77,7 @@ Sub Tao_Pivot_AnToan()
     ' T?o sheet PVCT
     Set wsPVCT = wb.Worksheets.Add(After:=wsPV)
     wsPVCT.Name = "PVCT"
-    ' Pivot 1 trÃªn PVCT (? A4): N? TK filter, ThÃ¡ng rows, CÃ³ TK columns
+    ' Pivot 1 trên PVCT (? A4): N? TK filter, Tháng rows, Có TK columns
     Set pt = wsPVCT.PivotTables.Add(PivotCache:=pc, TableDestination:=wsPVCT.Range("A4"), TableName:="PT_PVCT_1")
     With pt
         .PivotFields(hdrN_NoTK).Orientation = xlPageField
@@ -85,7 +86,7 @@ Sub Tao_Pivot_AnToan()
         .AddDataField .PivotFields(hdrN_PhatSinh), "T" & ChrW(7893) & "ng ti" & ChrW(7873) & "n", xlSum
          .DataBodyRange.NumberFormat = "#,##0"
     End With
-    ' Pivot 2 trÃªn PVCT (? A26): CÃ³ TK filter, ThÃ¡ng rows, N? TK columns
+    ' Pivot 2 trên PVCT (? A26): Có TK filter, Tháng rows, N? TK columns
     Set pt = wsPVCT.PivotTables.Add(PivotCache:=pc, TableDestination:=wsPVCT.Range("A26"), TableName:="PT_PVCT_2")
     With pt
         .PivotFields(hdrN_CoTK).Orientation = xlPageField
@@ -101,3 +102,4 @@ Sub Tao_Pivot_AnToan()
     Application.ScreenUpdating = True
     MsgBox "Done", vbInformation
 End Sub
+

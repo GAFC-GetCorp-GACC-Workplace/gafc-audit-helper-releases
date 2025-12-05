@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tao_all_Pivot"
 Option Explicit
 Public Sub Tao_al_pivot(control As IRibbonControl)
     Dim tStart As Double
@@ -8,7 +9,7 @@ Public Sub Tao_al_pivot(control As IRibbonControl)
     Application.EnableEvents = False
     calcMode = Application.Calculation
     Application.Calculation = xlCalculationManual
-    '=== 1?? G?I SUB √ê?NH D?NG D? LI?U ===
+    '=== 1?? G?I SUB –?NH D?NG D? LI?U ===
     Call Chinh_Format_NKC
     '=== 2?? G?I SUB T?O PIVOT ===
     Call Tao_Pivot_AnToan

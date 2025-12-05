@@ -1,3 +1,4 @@
+Attribute VB_Name = "TH_Auto"
 Option Explicit
 Private gTHEvents As AppEvents_TH
 Public Sub Enable_TH_AutoRefresh()

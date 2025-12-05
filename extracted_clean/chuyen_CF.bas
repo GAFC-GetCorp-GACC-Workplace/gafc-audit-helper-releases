@@ -1,3 +1,4 @@
+Attribute VB_Name = "chuyen_CF"
 Option Explicit
 Public Sub Chuyencf(control As IRibbonControl)
 '
@@ -65,3 +66,4 @@ Public Sub Chuyencf(control As IRibbonControl)
     Range("AA48").Select
     MsgBox ChrW(272) & ChrW(227) & ChrW(32) & ChrW(99) & ChrW(104) & ChrW(117) & ChrW(121) & ChrW(7875) & ChrW(110) & ChrW(32) & ChrW(120) & ChrW(111) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(67) & ChrW(70) & ChrW(44) & ChrW(32) & ChrW(109) & ChrW(7901) & ChrW(105) & ChrW(32) & ChrW(97) & ChrW(47) & ChrW(99) & ChrW(32) & ChrW(116) & ChrW(105) & ChrW(7871) & ChrW(112) & ChrW(32) & ChrW(116) & ChrW(7907) & ChrW(99) & ChrW(32) & ChrW(99) & ChrW(104) & ChrW(117) & ChrW(121) & ChrW(7875) & ChrW(110) & ChrW(32) & ChrW(116) & ChrW(104) & ChrW(117) & ChrW(121) & ChrW(7871) & ChrW(116) & ChrW(32) & ChrW(109) & ChrW(105) & ChrW(110) & ChrW(104) & ChrW(32) & ChrW(273) & ChrW(7847) & ChrW(117) & ChrW(32) & ChrW(107) & ChrW(7923)
 End Sub
+

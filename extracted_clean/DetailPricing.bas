@@ -1,21 +1,22 @@
+Attribute VB_Name = "DetailPricing"
 Option Explicit
-'==== √ê?nh nghia c?t trong detailData ====
+'==== –?nh nghia c?t trong detailData ====
 Private Const COL_SO_CT  As Long = 1   ' Col A = S? CT
-Private Const COL_NGAY   As Long = 3   ' Col C = Ng√†y
-Private Const COL_MA     As Long = 4   ' Col D = M√£ h√†ng
+Private Const COL_NGAY   As Long = 3   ' Col C = Ng‡y
+Private Const COL_MA     As Long = 4   ' Col D = M„ h‡ng
 Private Const COL_SL     As Long = 16  ' Col P = S? lu?ng
-Private Const COL_GIATRI As Long = 17  ' Col Q = Gi√° tr?
+Private Const COL_GIATRI As Long = 17  ' Col Q = Gi· tr?
 '==============================================================
-' Th? t?c ch√≠nh
+' Th? t?c chÌnh
 '==============================================================
 Public Sub detailtopricing(control As IRibbonControl)
 '=================================================================
-' M?c d√≠ch:
+' M?c dÌch:
 '  - Copy d? li?u t? DETAIL sang PRICING
-'  - B? qua d√≤ng c√≥ SL=0 ho?c Gi√° tr?=0
-'  - Gom h√≥a don cho d?n khi d? s? lu?ng
-'  - Th√™m d√≤ng Total NGAY SAU HEADER
-'  - D√≤ng Total c√≥ th√™m c?t M = (√êon gi√° Total - √êon gi√° g?c)/√êon gi√° g?c
+'  - B? qua dÚng cÛ SL=0 ho?c Gi· tr?=0
+'  - Gom hÛa don cho d?n khi d? s? lu?ng
+'  - ThÍm dÚng Total NGAY SAU HEADER
+'  - DÚng Total cÛ thÍm c?t M = (–on gi· Total - –on gi· g?c)/–on gi· g?c
 '=================================================================
     Dim wsDetail As Worksheet, wsTarget As Worksheet
     Dim lastRowDetail As Long, lastRowTarget As Long
@@ -37,23 +38,23 @@ Public Sub detailtopricing(control As IRibbonControl)
         calcMode = .Calculation
         .Calculation = xlCalculationManual
     End With
-    '--- G√°n sheet ---
+    '--- G·n sheet ---
     Set wsDetail = Worksheets("D550.1.1 Detail Input")
     Set wsTarget = Worksheets("D550.1 Pricing Testing RW-M")
-    '--- T?t filter n?u c√≥ ---
+    '--- T?t filter n?u cÛ ---
     filterOn = wsDetail.AutoFilterMode
     If filterOn Then wsDetail.AutoFilterMode = False
-    '--- L?y v√πng d? li?u ---
+    '--- L?y v˘ng d? li?u ---
     lastRowDetail = wsDetail.Cells(wsDetail.Rows.Count, "A").End(xlUp).Row
     lastRowTarget = wsTarget.Cells(wsTarget.Rows.Count, "B").End(xlUp).Row
     If lastRowDetail < 3 Or lastRowTarget < 3 Then GoTo SafeExit
     detailData = wsDetail.Range("A3:Q" & lastRowDetail).Value2
     targetData = wsTarget.Range("A3:G" & lastRowTarget).Value2
-    '--- Xo√° d? li?u cu ---
+    '--- Xo· d? li?u cu ---
     wsTarget.Range("A3:M" & wsTarget.Rows.Count).ClearContents
     resultRow = 3
     '==============================================================
-    ' 1) T?o index c√°c d√≤ng Detail theo M√£ h√†ng (qu√©t ngu?c)
+    ' 1) T?o index c·c dÚng Detail theo M„ h‡ng (quÈt ngu?c)
     '==============================================================
     Set dict = CreateObject("Scripting.Dictionary")
     Dim rowCnt As Long: rowCnt = UBound(detailData, 1)
@@ -83,7 +84,7 @@ Public Sub detailtopricing(control As IRibbonControl)
         End If
     Next j
     '==============================================================
-    ' 2) Duy?t t?ng m√£ h√†ng trong Pricing & ghi k?t qu?
+    ' 2) Duy?t t?ng m„ h‡ng trong Pricing & ghi k?t qu?
     '==============================================================
     Dim startRow As Long, endRow As Long
     Dim gomCount As Long
@@ -98,10 +99,10 @@ Public Sub detailtopricing(control As IRibbonControl)
                     '--- Ghi 7 c?t d?u ---
                     wsTarget.Cells(resultRow, 1).Resize(1, 7).Value = SliceRow(targetData, i, 1, 7)
                     wsTarget.Cells(resultRow, 7).FormulaR1C1 = "=RC[-3]/RC[-2]"
-                    startRow = resultRow + 1   ' d√≤ng Total s? n?m ? d√¢y
-                    ' b? tr?ng d√≤ng Total, ghi chi ti?t t? d√≤ng sau
+                    startRow = resultRow + 1   ' dÚng Total s? n?m ? d‚y
+                    ' b? tr?ng dÚng Total, ghi chi ti?t t? dÚng sau
                     resultRow = resultRow + 2
-                    '--- Gom ho√° don ---
+                    '--- Gom ho· don ---
                     gomCount = 0
                     For k = 1 To items.Count
                         rec = items(k)
@@ -115,7 +116,7 @@ Public Sub detailtopricing(control As IRibbonControl)
                         resultRow = resultRow + 1
                         If qtyAccum >= qtyNeeded Then Exit For
                     Next k
-                    '--- D√≤ng Total ---
+                    '--- DÚng Total ---
                     endRow = resultRow - 1   ' last detail row
                     wsTarget.Cells(startRow, 9).Value = "Total"
                     wsTarget.Cells(startRow, 10).FormulaR1C1 = "=SUM(R[1]C:R[" & (endRow - startRow) & "]C)"
@@ -125,15 +126,15 @@ Public Sub detailtopricing(control As IRibbonControl)
                         .Interior.Color = RGB(200, 255, 200)
                         .Font.Bold = True
                     End With
-                    ' --- Th√™m c?t M: so s√°nh don gi√° ---
+                    ' --- ThÍm c?t M: so s·nh don gi· ---
                     wsTarget.Cells(startRow, 13).FormulaR1C1 = "=(R[-" & (startRow - (startRow - 1)) & "]C[-6]-RC[-1])/RC[-1]"
                     wsTarget.Cells(startRow, 13).NumberFormat = "0.00%"
                 End If
             Else
-                '--- Kh√¥ng t√¨m th?y m√£ ---
+                '--- KhÙng tÏm th?y m„ ---
                 wsTarget.Cells(resultRow, 1).Resize(1, 7).Value = SliceRow(targetData, i, 1, 7)
                 With wsTarget.Cells(resultRow, 8)
-                    .Value = "Kh√¥ng t√¨m th?y m√£ h√†ng"
+                    .Value = "KhÙng tÏm th?y m„ h‡ng"
                     .Interior.Color = RGB(255, 255, 150)
                 End With
                 resultRow = resultRow + 1
@@ -141,7 +142,7 @@ Public Sub detailtopricing(control As IRibbonControl)
         End If
     Next i
 SafeExit:
-    '--- Kh√¥i ph?c filter ---
+    '--- KhÙi ph?c filter ---
     If filterOn Then wsDetail.Rows("2:2").AutoFilter
     '--- Format k?t qu? ---
     With wsTarget
@@ -166,7 +167,7 @@ End Sub
 '==============================================================
 ' Helpers
 '==============================================================
-' Parse ng√†y an to√†n
+' Parse ng‡y an to‡n
 Private Function SafeDate(ByVal v As Variant) As Variant
     On Error GoTo Bad
     If IsDate(v) Then
@@ -189,7 +190,7 @@ Private Function SafeDate(ByVal v As Variant) As Variant
 Bad:
     SafeDate = Empty
 End Function
-' Tr√≠ch 1 h√†ng th√†nh m?ng 1xN
+' TrÌch 1 h‡ng th‡nh m?ng 1xN
 Private Function SliceRow(ByRef arr As Variant, ByVal r As Long, ByVal c1 As Long, ByVal c2 As Long) As Variant
     Dim n As Long: n = c2 - c1 + 1
     Dim tmp() As Variant
@@ -210,3 +211,4 @@ Private Function NzDbl(ByVal v As Variant) As Double
         NzDbl = 0#
     End If
 End Function
+

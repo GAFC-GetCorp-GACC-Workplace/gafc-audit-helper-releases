@@ -1,3 +1,4 @@
+Attribute VB_Name = "Xu_Ly_NKC"
 Option Explicit
 Public Sub Test_Xu_ly_NKC()
     Xu_ly_NKC1111 Nothing
@@ -898,28 +899,28 @@ Function IsValidAccountPair(tkNo As String, tkCo As String) As Boolean
     End If
 
     ' ==================================================================================
-    ' 2. QUY TAC MUA HANG (Nguyên vật liệu, hàng hóa, TSCÐ)
+    ' 2. QUY TAC MUA HANG (Nguy�n v?t li?u, h�ng h�a, TSC�)
     ' ==================================================================================
-    ' Mua NVL, CCDC, hàng hóa: 152, 153, 156 Nợ / 111, 112, 331 Có
-    'Nợ 151 có 111,112,331
-    If (noPrefix = "152" Or noPrefix = "153" Or noPrefix = "156" Or noPrefix= "151") And _
+    ' Mua NVL, CCDC, h�ng h�a: 152, 153, 156 N? / 111, 112, 331 C�
+    'N? 151 c� 111,112,331
+    If (noPrefix = "152" Or noPrefix = "153" Or noPrefix = "156" Or noPrefix = "151") And _
        (coPrefix = "331" Or coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
 
-    ' Mua TSCÐ: 211, 213 Nợ / 111, 112, 331 Có
+    ' Mua TSC�: 211, 213 N? / 111, 112, 331 C�
     If (noPrefix = "211" Or noPrefix = "213") And _
        (coPrefix = "331" Or coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Nhận góp vốn TSCÐ: 211 Nợ / 411 Có
+    ' Nh?n g�p v?n TSC�: 211 N? / 411 C�
     If noPrefix = "211" And coPrefix = "411" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Mua BĐSĐT: 217 Nợ / 111, 112, 331 Có
+    ' Mua B�S�T: 217 N? / 111, 112, 331 C�
     If noPrefix = "217" And (coPrefix = "331" Or coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
@@ -959,74 +960,74 @@ Function IsValidAccountPair(tkNo As String, tkCo As String) As Boolean
     End If
 
     ' ==================================================================================
-    ' 4. QUY TAC THUE GTGT (Thuế giá trị gia tăng)
+    ' 4. QUY TAC THUE GTGT (Thu? gi� tr? gia tang)
     ' ==================================================================================
-    ' Thuế GTGT đầu vào: 133 Nợ / 111, 112, 331 Có
+    ' Thu? GTGT d?u v�o: 133 N? / 111, 112, 331 C�
     If noPrefix = "133" And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "331") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thuế GTGT được khấu trừ (Thông tư 99): 133 Nợ / 331, 111, 112 Có
+    ' Thu? GTGT du?c kh?u tr? (Th�ng tu 99): 133 N? / 331, 111, 112 C�
     If noPrefix = "133" And coPrefix = "331" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thuế GTGT đầu ra: 131, 111, 112 Nợ / 333 Có
+    ' Thu? GTGT d?u ra: 131, 111, 112 N? / 333 C�
     If (noPrefix = "131" Or noPrefix = "111" Or noPrefix = "112") And coPrefix = "333" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thuế GTGT phải nộp (không được khấu trừ): 333 Nợ / 111, 112, 331 Có
+    ' Thu? GTGT ph?i n?p (kh�ng du?c kh?u tr?): 333 N? / 111, 112, 331 C�
     If noPrefix = "333" And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "331") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 5. QUY TAC THANH TOAN (Tiền mặt, tiền gửi, công nợ)
+    ' 5. QUY TAC THANH TOAN (Ti?n m?t, ti?n g?i, c�ng n?)
     ' ==================================================================================
-    ' Trả tiền người bán: 331 Nợ / 111, 112 Có
+    ' Tr? ti?n ngu?i b�n: 331 N? / 111, 112 C�
     If noPrefix = "331" And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thu tiền khách hàng: 111, 112 Nợ / 131 Có
+    ' Thu ti?n kh�ch h�ng: 111, 112 N? / 131 C�
     If (noPrefix = "111" Or noPrefix = "112") And coPrefix = "131" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Chuyển đổi tiền: 111 <-> 112
+    ' Chuy?n d?i ti?n: 111 <-> 112
     If (noPrefix = "111" And coPrefix = "112") Or (noPrefix = "112" And coPrefix = "111") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 6. QUY TAC LUONG & BAO HIEM (Lương, BHXH, BHYT)
+    ' 6. QUY TAC LUONG & BAO HIEM (Luong, BHXH, BHYT)
     ' ==================================================================================
-    ' Trích lương phải trả: 622, 627, 641, 642 Nợ / 334 Có
+    ' Tr�ch luong ph?i tr?: 622, 627, 641, 642 N? / 334 C�
     If (noPrefix = "622" Or noPrefix = "627" Or noPrefix = "641" Or noPrefix = "642") And _
-       coPrefix = "334"  Or coPrefix= "338" Then
+       coPrefix = "334" Or coPrefix = "338" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Trả lương: 334 Nợ / 111, 112 Có
+    ' Tr? luong: 334 N? / 111, 112 C�
     If noPrefix = "334" And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Trích BHXH, BHYT: 334 Nợ / 338 Có
+    ' Tr�ch BHXH, BHYT: 334 N? / 338 C�
     If noPrefix = "334" And coPrefix = "338" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Nộp BHXH: 338 Nợ / 111, 112 Có
+    ' N?p BHXH: 338 N? / 111, 112 C�
     If noPrefix = "338" And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 7. QUY TAC KHAU HAO (Khấu hao TSCÐ)
+    ' 7. QUY TAC KHAU HAO (Kh?u hao TSC�)
     ' ==================================================================================
-    ' Trích khấu hao: 627, 641, 642 Nợ / 214 Có
+    ' Tr�ch kh?u hao: 627, 641, 642 N? / 214 C�
     If (noPrefix = "627" Or noPrefix = "641" Or noPrefix = "642") And coPrefix = "214" Then
         IsValidAccountPair = True: Exit Function
     End If
@@ -1080,154 +1081,154 @@ Function IsValidAccountPair(tkNo As String, tkCo As String) As Boolean
     End If
 
     ' ==================================================================================
-    ' 9. QUY TAC DAUTƯ (Đầu tư tài chính)
+    ' 9. QUY TAC DAUTU (�?u tu t�i ch�nh)
     ' ==================================================================================
-    ' Đầu tư ngắn hạn: 121, 128 Nợ / 111, 112 Có
+    ' �?u tu ng?n h?n: 121, 128 N? / 111, 112 C�
     If (noPrefix = "121" Or noPrefix = "128") And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thu hồi đầu tư ngắn hạn: 111, 112 Nợ / 121, 128 Có
+    ' Thu h?i d?u tu ng?n h?n: 111, 112 N? / 121, 128 C�
     If (noPrefix = "111" Or noPrefix = "112") And (coPrefix = "121" Or coPrefix = "128") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Đầu tư dài hạn: 221, 222, 228 Nợ / 111, 112, 411 Có
+    ' �?u tu d�i h?n: 221, 222, 228 N? / 111, 112, 411 C�
     If (noPrefix = "221" Or noPrefix = "222" Or noPrefix = "228") And _
        (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "411") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thu hồi đầu tư dài hạn: 111, 112 Nợ / 221, 222, 228 Có
+    ' Thu h?i d?u tu d�i h?n: 111, 112 N? / 221, 222, 228 C�
     If (noPrefix = "111" Or noPrefix = "112") And _
        (coPrefix = "221" Or coPrefix = "222" Or coPrefix = "228") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 10. QUY TAC UNG TRUOC (Tạm ứng, ứng trước)
+    ' 10. QUY TAC UNG TRUOC (T?m ?ng, ?ng tru?c)
     ' ==================================================================================
-    ' Tạm ứng: 141 Nợ / 111, 112 Có
+    ' T?m ?ng: 141 N? / 111, 112 C�
     If noPrefix = "141" And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Hoàn ứng, thanh toán tạm ứng: 111, 112, 622, 627, 641, 642 Nợ / 141 Có
+    ' Ho�n ?ng, thanh to�n t?m ?ng: 111, 112, 622, 627, 641, 642 N? / 141 C�
     If (noPrefix = "111" Or noPrefix = "112" Or noPrefix = "622" Or noPrefix = "627" Or _
         noPrefix = "641" Or noPrefix = "642") And coPrefix = "141" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Nhận ứng trước: 111, 112 Nợ / 131 Có (ghi tăng công nợ phải thu đồng thời)
-    ' (Đã có trong quy tắc thanh toán)
+    ' Nh?n ?ng tru?c: 111, 112 N? / 131 C� (ghi tang c�ng n? ph?i thu d?ng th?i)
+    ' (�� c� trong quy t?c thanh to�n)
 
     ' ==================================================================================
-    ' 11. QUY TAC CHI PHI TRA TRUOC (Trả trước ngắn hạn, dài hạn)
+    ' 11. QUY TAC CHI PHI TRA TRUOC (Tr? tru?c ng?n h?n, d�i h?n)
     ' ==================================================================================
-    ' Chi phí trả trước ngắn hạn: 142 Nợ / 111, 112, 331 Có
+    ' Chi ph� tr? tru?c ng?n h?n: 142 N? / 111, 112, 331 C�
     If noPrefix = "142" And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "331") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Phân bổ chi phí trả trước ngắn hạn: 622, 627, 641, 642 Nợ / 142 Có
+    ' Ph�n b? chi ph� tr? tru?c ng?n h?n: 622, 627, 641, 642 N? / 142 C�
     If (noPrefix = "622" Or noPrefix = "627" Or noPrefix = "641" Or noPrefix = "642") And coPrefix = "142" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Chi phí trả trước dài hạn: 242, 244 Nợ / 111, 112, 331 Có
+    ' Chi ph� tr? tru?c d�i h?n: 242, 244 N? / 111, 112, 331 C�
     If (noPrefix = "242" Or noPrefix = "244") And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "331") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Phân bổ chi phí trả trước dài hạn: 627, 641, 642 Nợ / 242, 244 Có
+    ' Ph�n b? chi ph� tr? tru?c d�i h?n: 627, 641, 642 N? / 242, 244 C�
     If (noPrefix = "627" Or noPrefix = "641" Or noPrefix = "642") And (coPrefix = "242" Or coPrefix = "244") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 12. QUY TAC VON CHU SO HUU (Vốn, lợi nhuận chưa phân phối)
+    ' 12. QUY TAC VON CHU SO HUU (V?n, l?i nhu?n chua ph�n ph?i)
     ' ==================================================================================
-    ' Góp vốn: 111, 112, 152, 156, 211 Nợ / 411 Có
+    ' G�p v?n: 111, 112, 152, 156, 211 N? / 411 C�
     If (noPrefix = "111" Or noPrefix = "112" Or noPrefix = "152" Or noPrefix = "156" Or noPrefix = "211") And _
        coPrefix = "411" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Rút vốn: 411 Nợ / 111, 112 Có
+    ' R�t v?n: 411 N? / 111, 112 C�
     If noPrefix = "411" And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Tăng vốn từ lợi nhuận: 421 Nợ / 411 Có
+    ' Tang v?n t? l?i nhu?n: 421 N? / 411 C�
     If noPrefix = "421" And coPrefix = "411" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Chia lợi nhuận: 421 Nợ / 111, 112, 334 Có
+    ' Chia l?i nhu?n: 421 N? / 111, 112, 334 C�
     If noPrefix = "421" And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "334") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Trích quỹ: 421 Nợ / 414, 418 Có
+    ' Tr�ch qu?: 421 N? / 414, 418 C�
     If noPrefix = "421" And (coPrefix = "414" Or coPrefix = "418") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Sử dụng quỹ: 414, 418 Nợ / 111, 112, 211 Có
+    ' S? d?ng qu?: 414, 418 N? / 111, 112, 211 C�
     If (noPrefix = "414" Or noPrefix = "418") And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "211") Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 13. QUY TAC SAN XUAT (Chi phí sản xuất, giá thành)
+    ' 13. QUY TAC SAN XUAT (Chi ph� s?n xu?t, gi� th�nh)
     ' ==================================================================================
-    ' Xuất NVL sản xuất: 621, 154 Nợ / 152 Có
+    ' Xu?t NVL s?n xu?t: 621, 154 N? / 152 C�
     If (noPrefix = "621" Or noPrefix = "154") And coPrefix = "152" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Xuất CCDC sản xuất: 622, 627 Nợ / 153 Có
+    ' Xu?t CCDC s?n xu?t: 622, 627 N? / 153 C�
     If (noPrefix = "622" Or noPrefix = "627") And coPrefix = "153" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Kết chuyển chi phí sản xuất: 154 Nợ / 621, 622, 627 Có
+    ' K?t chuy?n chi ph� s?n xu?t: 154 N? / 621, 622, 627 C�
     If noPrefix = "154" And (coPrefix = "621" Or coPrefix = "622" Or coPrefix = "627") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Nhập thành phẩm: 155 Nợ / 154 Có
+    ' Nh?p th�nh ph?m: 155 N? / 154 C�
     If noPrefix = "155" And coPrefix = "154" Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 14. QUY TAC PHAI THU/TRA KHAC (Phải thu khác, phải trả khác)
+    ' 14. QUY TAC PHAI THU/TRA KHAC (Ph?i thu kh�c, ph?i tr? kh�c)
     ' ==================================================================================
-    ' Phải thu khác: 138 Nợ / 111, 112, 711 Có
+    ' Ph?i thu kh�c: 138 N? / 111, 112, 711 C�
     If noPrefix = "138" And (coPrefix = "111" Or coPrefix = "112" Or coPrefix = "711") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Thu phải thu khác: 111, 112 Nợ / 138 Có
+    ' Thu ph?i thu kh�c: 111, 112 N? / 138 C�
     If (noPrefix = "111" Or noPrefix = "112") And coPrefix = "138" Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Phải trả khác: 338, 344 Nợ / 111, 112 Có
+    ' Ph?i tr? kh�c: 338, 344 N? / 111, 112 C�
     If (noPrefix = "338" Or noPrefix = "344") And (coPrefix = "111" Or coPrefix = "112") Then
         IsValidAccountPair = True: Exit Function
     End If
 
-    ' Phải thu về bán tài sản: 138 Nợ / 711 Có
+    ' Ph?i thu v? b�n t�i s?n: 138 N? / 711 C�
     If noPrefix = "138" And coPrefix = "711" Then
         IsValidAccountPair = True: Exit Function
     End If
 
     ' ==================================================================================
-    ' 15. QUY TAC THONG TU 99/2024 (Tài khoản mới)
+    ' 15. QUY TAC THONG TU 99/2024 (T�i kho?n m?i)
     ' ==================================================================================
-    ' TK 171: Giao dịch mua bán lại trái phiếu Chính phủ
+    ' TK 171: Giao d?ch mua b�n l?i tr�i phi?u Ch�nh ph?
     ' If noPrefix = "171" And (coPrefix = "111" Or coPrefix = "112") Then
     '     IsValidAccountPair = True: Exit Function
     ' End If
@@ -1236,28 +1237,28 @@ Function IsValidAccountPair(tkNo As String, tkCo As String) As Boolean
     '     IsValidAccountPair = True: Exit Function
     ' End If
 
-    ' ' TK 2281: Chi phí chờ phân bổ (CCDC chờ phân bổ)
+    ' ' TK 2281: Chi ph� ch? ph�n b? (CCDC ch? ph�n b?)
     ' If noPrefix = "2281" And (coPrefix = "331" Or coPrefix = "111" Or coPrefix = "112") Then
     '     IsValidAccountPair = True: Exit Function
     ' End If
 
-    ' ' Phân bổ CCDC: 627, 641, 642 Nợ / 2281 Có
+    ' ' Ph�n b? CCDC: 627, 641, 642 N? / 2281 C�
     ' If (noPrefix = "627" Or noPrefix = "641" Or noPrefix = "642") And coPrefix = "2281" Then
     '     IsValidAccountPair = True: Exit Function
     ' End If
 
-    ' ' TK 229: Dự phòng giảm giá hàng tồn kho
+    ' ' TK 229: D? ph�ng gi?m gi� h�ng t?n kho
     ' If (noPrefix = "632" Or noPrefix = "641") And (coPrefix = "229" Or Left(coPrefix, 3) = "229") Then
     '     IsValidAccountPair = True: Exit Function
     ' End If
 
-    ' ' Hoàn nhập dự phòng: 229 Nợ / 632, 711 Có
+    ' ' Ho�n nh?p d? ph�ng: 229 N? / 632, 711 C�
     ' If (coPrefix = "229" Or Left(coPrefix, 3) = "229") And (noPrefix = "632" Or noPrefix = "711") Then
     '     IsValidAccountPair = True: Exit Function
     ' End If
 
     ' ==================================================================================
-    ' 16. CUNG TAI KHOAN (Bút toán nội bộ)
+    ' 16. CUNG TAI KHOAN (B�t to�n n?i b?)
     ' ==================================================================================
     If tkNo = tkCo Then
         IsValidAccountPair = True: Exit Function
@@ -1408,3 +1409,6 @@ Private Function GetMonthValue(vDate As Variant) As Variant
         GetMonthValue = ""
     End If
 End Function
+
+
+

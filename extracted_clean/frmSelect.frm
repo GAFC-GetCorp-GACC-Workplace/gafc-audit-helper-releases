@@ -1,3 +1,18 @@
+VERSION 5.00
+Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frmSelect 
+   Caption         =   "UserForm1"
+   ClientHeight    =   5100
+   ClientLeft      =   255
+   ClientTop       =   1050
+   ClientWidth     =   14190
+   OleObjectBlob   =   "frmSelect.frx":0000
+   StartUpPosition =   1  'CenterOwner
+End
+Attribute VB_Name = "frmSelect"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
 Public SelectedMode As String
 Private Sub lblTitle_Click()
 End Sub

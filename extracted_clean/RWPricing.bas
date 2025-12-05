@@ -1,3 +1,4 @@
+Attribute VB_Name = "RWPricing"
 Option Explicit
 Public Sub rwtopricing(control As IRibbonControl)
     Dim wsRW As Worksheet, wsTarget As Worksheet
@@ -14,7 +15,7 @@ Public Sub rwtopricing(control As IRibbonControl)
     Application.Calculation = xlCalculationManual
     lastRowTarget = wsTarget.Cells(wsTarget.Rows.Count, "B").End(xlUp).Row
     lastRowRW = wsRW.Cells(wsRW.Rows.Count, "C").End(xlUp).Row
-    ' ?? X√≥a c?t ghi ch√∫ cu (M)
+    ' ?? XÛa c?t ghi ch˙ cu (M)
     wsTarget.Range("M3:M" & lastRowTarget).ClearContents
     For i = 3 To lastRowTarget
         codeTarget = Trim(wsTarget.Cells(i, 2).Value)
@@ -23,25 +24,25 @@ Public Sub rwtopricing(control As IRibbonControl)
             For j = 3 To lastRowRW
                 codeRW = Trim(wsRW.Cells(j, 3).Value)
                 If codeRW = codeTarget Then
-                    ' √êi?n d? li?u t? RW
-                    wsTarget.Cells(i, 3).Value = wsRW.Cells(j, 5).Value  ' T√™n h√†ng
+                    ' –i?n d? li?u t? RW
+                    wsTarget.Cells(i, 3).Value = wsRW.Cells(j, 5).Value  ' TÍn h‡ng
                     wsTarget.Cells(i, 4).Value = wsRW.Cells(j, 15).Value ' S? ti?n (O)
                     wsTarget.Cells(i, 5).Value = wsRW.Cells(j, 14).Value ' S? lu?ng (N)
-                    wsTarget.Cells(i, 6).Value = wsRW.Cells(j, 7).Value  ' √êVT (G)
-                    wsTarget.Cells(i, 7).FormulaR1C1 = "=RC[-3]/RC[-2]"  ' √êon gi√° = D/E
+                    wsTarget.Cells(i, 6).Value = wsRW.Cells(j, 7).Value  ' –VT (G)
+                    wsTarget.Cells(i, 7).FormulaR1C1 = "=RC[-3]/RC[-2]"  ' –on gi· = D/E
                     found = True
                     Exit For
                 End If
             Next j
             If Not found Then
-                wsTarget.Cells(i, 13).Value = "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y m√£"
+                wsTarget.Cells(i, 13).Value = "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y m„"
             End If
         End If
     Next i
-    ' ?? Format s?: S? ti?n - S? lu?ng - √êon gi√°
+    ' ?? Format s?: S? ti?n - S? lu?ng - –on gi·
     With wsTarget
-        .Columns("D:E").NumberFormat = "#,##0" ' S? ti?n v√† s? lu?ng
-        .Columns("G:G").NumberFormat = "#,##0" ' √êon gi√°
+        .Columns("D:E").NumberFormat = "#,##0" ' S? ti?n v‡ s? lu?ng
+        .Columns("G:G").NumberFormat = "#,##0" ' –on gi·
         .Columns("A:G").AutoFit
     End With
     Application.ScreenUpdating = True

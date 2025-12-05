@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tra_cuu_tai_khoan"
 Option Explicit
 Public Sub Tracode(control As IRibbonControl)
     Dim ws As Worksheet
@@ -8,7 +9,7 @@ Public Sub Tracode(control As IRibbonControl)
     Dim tk As String
     Set ws = Worksheets("TB")
     Set dict = CreateObject("Scripting.Dictionary")
-    ' ? B?ng tra m√£
+    ' ? B?ng tra m„
     dict.Add "111", Array("111", "")
     dict.Add "112", Array("112", "")
     dict.Add "113", Array("113", "")
@@ -93,14 +94,14 @@ Public Sub Tracode(control As IRibbonControl)
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
-    ' ?? T√¨m s? d√≤ng
+    ' ?? TÏm s? dÚng
     lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
-    ' ?? √ê?c to√†n b? d? li?u c?t C v√†o m?ng (t√†i kho?n)
+    ' ?? –?c to‡n b? d? li?u c?t C v‡o m?ng (t‡i kho?n)
 inputArr = ws.Range("C2:C" & lastRow).Value
     ReDim outputArr(1 To UBound(inputArr), 1 To 2) ' Code1, Code2
-    ' ?? X? l√Ω t?ng d√≤ng trong m?ng
+    ' ?? X? l˝ t?ng dÚng trong m?ng
     For i = 1 To UBound(inputArr)
-        tk = Trim(CStr(inputArr(i, 1))) ' √âp v? chu?i
+        tk = Trim(CStr(inputArr(i, 1))) ' …p v? chu?i
         If dict.Exists(tk) Then
             tempVal = dict(tk)
             outputArr(i, 1) = tempVal(0)
@@ -110,11 +111,11 @@ inputArr = ws.Range("C2:C" & lastRow).Value
             outputArr(i, 2) = ""
         End If
     Next i
-    ' ?? Ghi to√†n b? k?t qu? ra c?t A:B m?t l?n
+    ' ?? Ghi to‡n b? k?t qu? ra c?t A:B m?t l?n
     ws.Range("A2:B" & lastRow).Value = outputArr
-    ' ?? Kh√¥i ph?c c√†i d?t
+    ' ?? KhÙi ph?c c‡i d?t
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    MsgBox "?? √ê√£ tra c?u xong Code1 v√† Code2 v?i t?c d? t?i uu!", vbInformation
+    MsgBox "?? –„ tra c?u xong Code1 v‡ Code2 v?i t?c d? t?i uu!", vbInformation
 End Sub

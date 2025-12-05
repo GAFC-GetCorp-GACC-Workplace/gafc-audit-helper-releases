@@ -276,14 +276,14 @@ End Function
 
 ' Hien thi UI nhap key (UserForm neu co, fallback InputBox)
 Private Function PromptForKeyUI() As String
-    On Error GoTo Fallback
+    On Error GoTo fallback
     Dim frm As Object
     Set frm = VBA.UserForms.Add("frmLicensePrompt")
     frm.Show vbModal
     PromptForKeyUI = frm.EnteredKey
     Unload frm
     Exit Function
-Fallback:
+fallback:
     PromptForKeyUI = InputBox("Nhap license key de su dung GAFC Audit Helper:", "Kich hoat license")
 End Function
 
@@ -538,7 +538,7 @@ Private Function HttpPostJson(ByVal url As String, ByVal body As String, ByRef s
     Set http = CreateObject("MSXML2.XMLHTTP")
     http.Open "POST", url, False
     http.setRequestHeader "Content-Type", "application/json"
-    http.send body
+    http.Send body
     statusCode = http.status
     HttpPostJson = CStr(http.responseText)
     Exit Function

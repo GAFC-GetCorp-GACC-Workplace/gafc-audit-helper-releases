@@ -1,11 +1,12 @@
-' Bi?n toÃ n c?c d? d?m file
+Attribute VB_Name = "Len_data_thue"
+' Bi?n toàn c?c d? d?m file
 Option Explicit
 Public fileCount As Long
 Public maxFiles As Long
-' HÃ m d? quy t?i uu v?i gi?i h?n vÃ  hi?n th? ti?n trÃ¬nh
+' Hàm d? quy t?i uu v?i gi?i h?n và hi?n th? ti?n trình
 Private Sub GetAllXMLFiles(ByVal folderPath As String, ByRef fileList As Collection, Optional ByVal depth As Integer = 0)
     Dim fso As Object, folder As Object, subFolder As Object, file As Object
-    ' Gi?i h?n d? sÃ¢u d? quy d? trÃ¡nh quÃ¡ t?i
+    ' Gi?i h?n d? sâu d? quy d? tránh quá t?i
     Const MAX_DEPTH As Integer = 10
     If depth > MAX_DEPTH Then Exit Sub
     ' Gi?i h?n s? lu?ng file
@@ -20,10 +21,10 @@ Private Sub GetAllXMLFiles(ByVal folderPath As String, ByRef fileList As Collect
         Exit Sub
     End If
     On Error GoTo 0
-    ' Hi?n th? ti?n trÃ¬nh
+    ' Hi?n th? ti?n trình
     If fileList.Count Mod 10 = 0 Then
         Application.StatusBar = ChrW(272) & ChrW(97) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(113) & ChrW(117) & ChrW(233) & ChrW(116) & ChrW(58) & ChrW(32) & fileList.Count & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(32) & ChrW(88) & ChrW(77) & ChrW(76) & ChrW(32) & ChrW(273) & ChrW(227) & ChrW(32) & ChrW(116) & ChrW(236) & ChrW(109) & ChrW(32) & ChrW(116) & ChrW(104) & ChrW(7845) & ChrW(121) & ChrW(46) & ChrW(46) & ChrW(46) & ChrW(32) & ChrW(40) & folderPath & ChrW(41)
-        DoEvents ' Cho phÃ©p Windows x? lÃ½ cÃ¡c s? ki?n khÃ¡c
+        DoEvents ' Cho phép Windows x? lý các s? ki?n khác
     End If
     ' L?y file XML trong folder hi?n t?i
     On Error Resume Next
@@ -34,10 +35,10 @@ Private Sub GetAllXMLFiles(ByVal folderPath As String, ByRef fileList As Collect
         End If
     Next
     On Error GoTo 0
-    ' Ã? quy vÃ o subfolder
+    ' Ð? quy vào subfolder
     On Error Resume Next
     For Each subFolder In folder.SubFolders
-        ' B? qua cÃ¡c folder h? th?ng
+        ' B? qua các folder h? th?ng
         If Not (subFolder.Name = "System Volume Information" Or _
                 subFolder.Name = "$Recycle.Bin" Or _
                 Left(subFolder.Name, 1) = ".") Then
@@ -47,7 +48,7 @@ Private Sub GetAllXMLFiles(ByVal folderPath As String, ByRef fileList As Collect
     Next subFolder
     On Error GoTo 0
 End Sub
-' Sub chÃ­nh v?i t?i uu vÃ  x? lÃ½ l?i
+' Sub chính v?i t?i uu và x? lý l?i
 Public Sub tra_cuu_thue(control As IRibbonControl)
     Dim xmlDoc As Object
     Dim filePath As Variant, fileList As Collection, pickedFiles As Variant
@@ -61,8 +62,8 @@ Public Sub tra_cuu_thue(control As IRibbonControl)
     Dim rowMap As Object: Set rowMap = CreateObject("Scripting.Dictionary")
     Dim sheetsWithData As Object: Set sheetsWithData = CreateObject("Scripting.Dictionary")
     ' Thi?t l?p gi?i h?n s? file t?i da
-    maxFiles = 1000 ' CÃ³ th? di?u ch?nh tÃ¹y nhu c?u
-    ' T?t c?p nh?t mÃ n hÃ¬nh d? tang t?c
+    maxFiles = 1000 ' Có th? di?u ch?nh tùy nhu c?u
+    ' T?t c?p nh?t màn hình d? tang t?c
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     Application.Calculation = xlCalculationManual
@@ -77,10 +78,10 @@ Public Sub tra_cuu_thue(control As IRibbonControl)
             .Title = ChrW(67) & ChrW(104) & ChrW(7885) & ChrW(110) & ChrW(32) & ChrW(116) & ChrW(104) & ChrW(432) & ChrW(32) & ChrW(109) & ChrW(7909) & ChrW(99) & ChrW(32) & ChrW(99) & ChrW(104) & ChrW(7913) & ChrW(97) & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(32) & ChrW(88) & ChrW(77) & ChrW(76) & ChrW(32) & ChrW(40) & ChrW(116) & ChrW(7889) & ChrW(105) & ChrW(32) & ChrW(273) & ChrW(97) & ChrW(32) & maxFiles & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(41)
             If .Show = -1 Then
                 folderPath = .SelectedItems(1)
-                ' Hi?n th? thÃ´ng bÃ¡o dang quÃ©t
+                ' Hi?n th? thông báo dang quét
                 Application.StatusBar = ChrW(272) & ChrW(97) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(113) & ChrW(117) & ChrW(233) & ChrW(116) & ChrW(32) & ChrW(116) & ChrW(104) & ChrW(432) & ChrW(32) & ChrW(109) & ChrW(7909) & ChrW(99) & ChrW(44) & ChrW(32) & ChrW(118) & ChrW(117) & ChrW(105) & ChrW(32) & ChrW(108) & ChrW(242) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(99) & ChrW(104) & ChrW(7901) & ChrW(46) & ChrW(46) & ChrW(46)
                 DoEvents
-                ' G?i hÃ m d? quy d? l?y file XML
+                ' G?i hàm d? quy d? l?y file XML
                 GetAllXMLFiles folderPath, fileList
                 If fileList.Count = 0 Then
                     MsgBox ChrW(75) & ChrW(104) & ChrW(244) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(116) & ChrW(236) & ChrW(109) & ChrW(32) & ChrW(116) & ChrW(104) & ChrW(7845) & ChrW(121) & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(32) & ChrW(88) & ChrW(77) & ChrW(76) & ChrW(32) & ChrW(110) & ChrW(224) & ChrW(111) & ChrW(33), vbExclamation
@@ -128,12 +129,12 @@ Public Sub tra_cuu_thue(control As IRibbonControl)
         "ns:CTieuTKhaiChinh/ns:ct23", "ns:CTieuTKhaiChinh/ns:ct21", "ns:CTieuTKhaiChinh/ns:ct27", _
         "ns:CTieuTKhaiChinh/ns:ct28", "ns:CTieuTKhaiChinh/ns:ct26", "ns:CTieuTKhaiChinh/ns:ct30", _
         "ns:CTieuTKhaiChinh/ns:ct31", "ns:CTieuTKhaiChinh/ns:ct29")
-    ' X? lÃ½ t?ng file v?i progress
+    ' X? lý t?ng file v?i progress
     Dim fileCounter As Long
     fileCounter = 0
     For Each filePath In fileList
         fileCounter = fileCounter + 1
-        ' C?p nh?t ti?n trÃ¬nh m?i 5 file
+        ' C?p nh?t ti?n trình m?i 5 file
         If fileCounter Mod 5 = 0 Or fileCounter = fileList.Count Then
             Application.StatusBar = ChrW(272) & ChrW(97) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(120) & ChrW(7917) & ChrW(32) & ChrW(108) & ChrW(253) & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(32) & fileCounter & ChrW(47) & fileList.Count & ChrW(46) & ChrW(46) & ChrW(46)
             DoEvents
@@ -168,7 +169,7 @@ Public Sub tra_cuu_thue(control As IRibbonControl)
         Do While Application.WorksheetFunction.CountA(ws.Range("A" & r & ":Y" & r)) > 0
             r = r + 1
         Loop
-        ' ÃÃ¡nh d?u sheet cÃ³ data
+        ' Ðánh d?u sheet có data
         If Not sheetsWithData.Exists(sheetName) Then
             sheetsWithData.Add sheetName, True
         End If
@@ -247,12 +248,12 @@ Public Sub tra_cuu_thue(control As IRibbonControl)
             End If
         End With
 NextFile:
-        ' Gi?i phÃ³ng b? nh?
+        ' Gi?i phóng b? nh?
         Set xmlDoc = Nothing
         Set HSoKhai = Nothing
         Set CTieuTKhai = Nothing
     Next filePath
-    ' Highlight vÃ  d?i mÃ u tab
+    ' Highlight và d?i màu tab
     Dim entry
     For Each entry In rowMap
         Dim arr: arr = Split(entry, "|")
@@ -264,7 +265,7 @@ NextFile:
         ActiveWorkbook.Sheets(sheetKey).Tab.Color = RGB(255, 0, 0)
         On Error GoTo 0
     Next sheetKey
-    ' ThÃ´ng bÃ¡o k?t qu?
+    ' Thông báo k?t qu?
     Dim importedSheets As String
     importedSheets = ""
     If sheetsWithData.Count > 0 Then
@@ -282,12 +283,12 @@ NextFile:
         MsgBox ChrW(272) & ChrW(227) & ChrW(32) & ChrW(113) & ChrW(117) & ChrW(233) & ChrW(116) & ChrW(32) & fileList.Count & ChrW(32) & ChrW(102) & ChrW(105) & ChrW(108) & ChrW(101) & ChrW(32) & ChrW(88) & ChrW(77) & ChrW(76) & ChrW(32) & ChrW(110) & ChrW(104) & ChrW(432) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(107) & ChrW(104) & ChrW(244) & ChrW(110) & ChrW(103) & ChrW(32) & ChrW(99) & ChrW(243) & ChrW(32) & ChrW(100) & ChrW(97) & ChrW(116) & ChrW(97) & ChrW(32) & ChrW(112) & ChrW(104) & ChrW(249) & ChrW(32) & ChrW(104) & ChrW(7907) & ChrW(112) & ChrW(46), vbInformation
     End If
 CleanUp:
-    ' KhÃ´i ph?c l?i thi?t l?p
+    ' Khôi ph?c l?i thi?t l?p
     Application.ScreenUpdating = True
     Application.EnableEvents = True
     Application.Calculation = xlCalculationAutomatic
     Application.StatusBar = False
-    ' Gi?i phÃ³ng b? nh?
+    ' Gi?i phóng b? nh?
     Set fileList = Nothing
     Set rowMap = Nothing
     Set sheetsWithData = Nothing
@@ -296,13 +297,13 @@ ErrorHandler:
     MsgBox ChrW(76) & ChrW(7895) & ChrW(105) & ChrW(58) & ChrW(32) & Err.Description, vbCritical
     Resume CleanUp
 End Sub
-' Function GetNodeText - gi? nguyÃªn
+' Function GetNodeText - gi? nguyên
 Function GetNodeText(xmlNode As Object, ByVal path As String) As String
     On Error Resume Next
     Dim resultNode As Object
     Set resultNode = xmlNode.SelectSingleNode(path)
     If Not resultNode Is Nothing Then
-        GetNodeText = resultNode.Text
+        GetNodeText = resultNode.text
     Else
         GetNodeText = ""
     End If
@@ -326,3 +327,4 @@ Public Sub Xoa_data(control As IRibbonControl)
     On Error GoTo 0
     MsgBox ChrW(272) & ChrW(227) & ChrW(32) & ChrW(120) & ChrW(243) & ChrW(97) & ChrW(33), vbInformation
 End Sub
+

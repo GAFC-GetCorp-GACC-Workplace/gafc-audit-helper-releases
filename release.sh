@@ -125,6 +125,7 @@ fi
 python rebuild_xlam.py
 if [ $? -eq 0 ] && [ -f "gafc_audit_helper_new.xlam" ]; then
     cp -f "gafc_audit_helper_new.xlam" "gafc_audit_helper.xlam"
+    rm -f "gafc_audit_helper_new.xlam"
     echo "  ✓ XLAM built successfully"
 else
     echo "  ✗ Build failed! Please fix errors and try again."

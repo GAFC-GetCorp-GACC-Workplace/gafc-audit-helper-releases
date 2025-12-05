@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tao_format_TK_thue"
 Option Explicit
 Public Sub Tra_cuu(control As IRibbonControl)
     Dim wb As Workbook
@@ -8,7 +9,7 @@ Public Sub Tra_cuu(control As IRibbonControl)
     Call TaoBangThueGTGT_Merge_InWorkbook(wb)
     Call TaoBangTNCN_Merge_InWorkbook(wb)
     Call TaoBangThueNTNN_Merge_InWorkbook(wb)
-    '--- Xo√° sheet m?c d?nh (Sheet1, Sheet2...) ---
+    '--- Xo· sheet m?c d?nh (Sheet1, Sheet2...) ---
     Application.DisplayAlerts = False
     For Each ws In wb.Sheets
         If ws.Name Like "Sheet*" Then ws.Delete
@@ -17,7 +18,7 @@ Public Sub Tra_cuu(control As IRibbonControl)
     MsgBox "Done", vbInformation
 End Sub
 '=====================================================
-' C√°c sub con gi? nguy√™n code b?n c√≥, ch? th√™m d?i s? wb
+' C·c sub con gi? nguyÍn code b?n cÛ, ch? thÍm d?i s? wb
 '=====================================================
 Sub TaoBangThueGTGT_Merge_InWorkbook(wb As Workbook)
     Dim ws As Worksheet
@@ -72,7 +73,7 @@ Sub TaoBangThueGTGT_Merge_InWorkbook(wb As Workbook)
     ws.Range("R3").Value = "T" & ChrW(7893) & "ng c" & ChrW(7897) & "ng"
     ws.Range("T3").Value = ChrW(272) & "i" & ChrW(7873) & "u ch" & ChrW(7881) & "nh gi" & ChrW(7843) & "m"
     ws.Range("U3").Value = ChrW(272) & "i" & ChrW(7873) & "u ch" & ChrW(7881) & "nh t" & ChrW(259) & "ng"
-    '--- H√†ng 4: ctXX ---
+    '--- H‡ng 4: ctXX ---
     Dim arr As Variant
     arr = Array("/ct22", "/ct23", "/ct23a", "/ct24", "/ct24a", "/ct25", "/ct26", "/ct29", "/ct30", "/ct32", "/ct32a", "/ct34", "/ct31", "/ct33", "/ct35", "/ct36", "/ct37", "/ct38", "/ct40", "/ct41", "/ct42", "/ct43")
     ws.Range("D4:Y4").Value = arr
@@ -89,7 +90,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
     Dim ws As Worksheet
     Set ws = wb.Sheets.Add
     ws.Name = "TNCN"
-    '--- Code c?a b?n gi? nguy√™n t? d√¢y ---
+    '--- Code c?a b?n gi? nguyÍn t? d‚y ---
     ws.Range("A2:A3").Merge
     ws.Range("B2:B3").Merge
     ws.Range("C2:C3").Merge
@@ -102,7 +103,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
     ws.Range("A1:Q1").Merge
     '--- Nh?p d? li?u sau khi merge ---
     ws.Range("A1").Value = "T" & ChrW(7892) & "NG H" & ChrW(7906) & "P S" & ChrW(7888) & " LI" & ChrW(7878) & "U K" & ChrW(202) & " KHAI THU" & ChrW(7870) & " THU NH" & ChrW(7852) & "P C" & ChrW(193) & " NH" & ChrW(194) & "N T" & ChrW(7914) & " TI" & ChrW(7872) & "N L" & ChrW(431) & ChrW(416) & "NG, TI" & ChrW(7872) & "N C" & ChrW(212) & "NG"
-    ws.Range("A2").Value = "T√™n c√¥ng ty"
+    ws.Range("A2").Value = "TÍn cÙng ty"
     ws.Range("B2").Value = "K" & ChrW(7923) & " t" & ChrW(237) & "nh thu" & ChrW(7871)
     ws.Range("C2").Value = "L" & ChrW(7847) & "n k" & ChrW(234) & " khai"
     ws.Range("D2").Value = "T" & ChrW(7893) & "ng s" & ChrW(7889) & " lao " & ChrW(273) & ChrW(7897) & "ng"
@@ -112,7 +113,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
     ws.Range("L2").Value = "Thu nh" & ChrW(7853) & "p ch" & ChrW(7883) & "u thu" & ChrW(7871) & " " & ChrW(273) & ChrW(227) & " tr" & ChrW(7843) & " cho c" & ChrW(225) & " nh" & ChrW(226) & "n thu" & ChrW(7897) & "c di" & ChrW(7879) & "n kh" & ChrW(7845) & "u tr" & ChrW(7915) & " thu" & ChrW(7871)
     ws.Range("O2").Value = "Thu" & ChrW(7871) & " TNCN " & ChrW(273) & ChrW(227) & " kh" & ChrW(7845) & "u tr" & ChrW(7915)
     ws.Range("O2").Value = "T" & ChrW(7892) & "NG H" & ChrW(7906) & "P S" & ChrW(7888) & " LI" & ChrW(7878) & "U K" & ChrW(202) & " KHAI THU" & ChrW(7870) & " THU NH" & ChrW(7852) & "P C" & ChrW(193) & " NH" & ChrW(194) & "N T" & ChrW(7914) & " TI" & ChrW(7872) & "N L" & ChrW(431) & ChrW(416) & "NG, TI" & ChrW(7872) & "N C" & ChrW(212) & "NG"
-    '--- H√†ng 3: Sub-headers ---
+    '--- H‡ng 3: Sub-headers ---
     ws.Range("F3").Value = "C" & ChrW(432) & " tr" & ChrW(250)
     ws.Range("G3").Value = "Kh" & ChrW(244) & "ng c" & ChrW(432) & " tr" & ChrW(250)
     ws.Range("H3").Value = "T" & ChrW(7893) & "ng c" & ChrW(7897) & "ng"
@@ -125,7 +126,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
     ws.Range("O3").Value = "C" & ChrW(432) & " tr" & ChrW(250)
     ws.Range("P3").Value = "Kh" & ChrW(244) & "ng c" & ChrW(432) & " tr" & ChrW(250)
     ws.Range("Q3").Value = "T" & ChrW(7893) & "ng c" & ChrW(7897) & "ng"
-    '--- H√†ng 4: Ch? s? ---
+    '--- H‡ng 4: Ch? s? ---
     Dim arr As Variant
     arr = Array( _
         "394:/ct21|864:/ct16", _
@@ -143,7 +144,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
         "394:/ct34|864:/ct31", _
         "394:/ct32|864:/ct29")
     ws.Range("D4:Q4").Value = arr
-    '--- √ê?nh d?ng ---
+    '--- –?nh d?ng ---
     With ws.Range("A1:Q4")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
@@ -167,7 +168,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Range("L2:L3").Merge
     ws.Range("A1:L1").Merge
     '--- Nh?p d? li?u sau khi merge ---
-    ws.Range("A2").Value = "T√™n c√¥ng ty"
+    ws.Range("A2").Value = "TÍn cÙng ty"
     ws.Range("B2").Value = "K" & ChrW(7923) & " t" & ChrW(237) & "nh thu" & ChrW(7871)
     ws.Range("C2").Value = "L" & ChrW(7847) & "n k" & ChrW(234) & " khai"
     ws.Range("D2").Value = "Doanh thu ch" & ChrW(432) & "a bao g" & ChrW(7891) & "m thu" & ChrW(7871) & " GTGT"
@@ -175,7 +176,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Range("H2").Value = "Thu" & ChrW(7871) & " TNDN"
     ws.Range("L2").Value = "T" & ChrW(7893) & "ng s" & ChrW(7889) & " thu" & ChrW(7871) & " ph" & ChrW(7843) & "i n" & ChrW(7897) & "p"
     ws.Range("A1").Value = "T" & ChrW(7892) & "NG H" & ChrW(7906) & "P S" & ChrW(7888) & " LI" & ChrW(7878) & "U K" & ChrW(202) & " KHAI THU" & ChrW(7870) & " NH" & ChrW(192) & " TH" & ChrW(7846) & "U N" & ChrW(431) & ChrW(7898) & "C NGO" & ChrW(192) & "I"
-    '--- H√†ng 3: Sub-headers ---
+    '--- H‡ng 3: Sub-headers ---
     ws.Range("E3").Value = "Doanh thu t" & ChrW(237) & "nh thu" & ChrW(7871)
     ws.Range("F3").Value = "T" & ChrW(7927) & " l" & ChrW(7879) & " GTGT (%)"
     ws.Range("G3").Value = "Thu" & ChrW(7871) & " GTGT ph" & ChrW(7843) & "i n" & ChrW(7897) & "p"
@@ -183,7 +184,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Range("I3").Value = "T" & ChrW(7927) & " l" & ChrW(7879) & " thu" & ChrW(7871) & " TNDN (%)"
     ws.Range("J3").Value = "Thu" & ChrW(7871) & " " & ChrW(273) & ChrW(432) & ChrW(7907) & "c mi" & ChrW(7877) & "n, gi" & ChrW(7843) & "m"
     ws.Range("K3").Value = "Thu" & ChrW(7871) & " ph" & ChrW(7843) & "i n" & ChrW(7897) & "p"
-    '--- H√†ng 4: Ch? s? ---
+    '--- H‡ng 4: Ch? s? ---
     Dim arr As Variant
     arr = Array( _
         "41:ct1|838:ct1b", _
@@ -199,7 +200,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
         "ThueTNDN/ct13", _
         "ct14")
     ws.Range("A4:L4").Value = arr
-    '--- D√≤ng 5: BK tham chi?u ---
+    '--- DÚng 5: BK tham chi?u ---
     ws.Range("A5").Value = "BKThueNTNN"
     ws.Range("D5").Value = "41:/tong_ct6|838:/tong_ct7"
     ws.Range("G5").Value = "tong_ct9"
@@ -207,7 +208,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Range("J5").Value = "tong_ct12"
     ws.Range("K5").Value = "tong_ct13"
     ws.Range("L5").Value = "tong_ct14"
-    '--- √ê?nh d?ng ---
+    '--- –?nh d?ng ---
     With ws.Range("A1:L5")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
@@ -218,3 +219,4 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Columns("A:L").AutoFit
     Rows("4:5").Hidden = True
 End Sub
+

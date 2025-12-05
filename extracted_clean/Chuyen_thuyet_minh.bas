@@ -1,3 +1,4 @@
+Attribute VB_Name = "Chuyen_thuyet_minh"
 Option Explicit
 Public Sub chuyen_tm11(control As IRibbonControl)
     Dim ws As Worksheet
@@ -5,28 +6,28 @@ Public Sub chuyen_tm11(control As IRibbonControl)
     Dim rowIndex As Long
     Dim label As String
     Dim f As String
-    Set ws = ActiveSheet ' DÃ¹ng sheet hi?n t?i
-    ' Nh?p vÃ¹ng dÃ²ng x? lÃ½
+    Set ws = ActiveSheet ' Dùng sheet hi?n t?i
+    ' Nh?p vùng dòng x? lý
     firstRow = Application.InputBox("Nh?p s? b?t d?u", Type:=1)
     If firstRow = 0 Then Exit Sub
-    lastRow = Application.InputBox("Nh?p s? k?t thÃºc", Type:=1)
+    lastRow = Application.InputBox("Nh?p s? k?t thúc", Type:=1)
     If lastRow = 0 Then Exit Sub
     If lastRow < firstRow Then
-        MsgBox "DÃ²ng k?t thÃºc ph?i l?n hon dÃ²ng b?t d?u!", vbExclamation
+        MsgBox "Dòng k?t thúc ph?i l?n hon dòng b?t d?u!", vbExclamation
         Exit Sub
     End If
     ' Tang t?c
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
-    ' L?p qua t?ng dÃ²ng
+    ' L?p qua t?ng dòng
     For rowIndex = firstRow To lastRow
-        label = ws.Cells(rowIndex, "B").Text
+        label = ws.Cells(rowIndex, "B").text
         If IsTongCong(label) Then
-            ' DÃ²ng T?ng c?ng
+            ' Dòng T?ng c?ng
             If IsActualFormula(ws.Cells(rowIndex, "L")) Then
                 If IsTextValue(ws.Cells(rowIndex, "L")) Then
-                    ' KhÃ´ng copy n?u lÃ  text
+                    ' Không copy n?u là text
                 ElseIf HasExternalSheetReference(ws.Cells(rowIndex, "L")) Then
                     ws.Cells(rowIndex, "P").Value = ws.Cells(rowIndex, "L").Value
                 Else
@@ -37,41 +38,41 @@ Public Sub chuyen_tm11(control As IRibbonControl)
                 ws.Cells(rowIndex, "P").Value = ws.Cells(rowIndex, "L").Value
             End If
         Else
-            ' DÃ²ng thu?ng
+            ' Dòng thu?ng
             If IsActualFormula(ws.Cells(rowIndex, "L")) Then
                 If IsTextValue(ws.Cells(rowIndex, "L")) Then
-                    ' KhÃ´ng copy n?u lÃ  text
+                    ' Không copy n?u là text
                 ElseIf HasExternalSheetReference(ws.Cells(rowIndex, "L")) Then
                     ws.Cells(rowIndex, "P").Value = ws.Cells(rowIndex, "L").Value
                 Else
                     f = ws.Cells(rowIndex, "L").Formula
                     ws.Cells(rowIndex, "P").Formula = ConvertMergedColumn(f, "L", "M", "N", "P", "Q", "R")
                 End If
-            ElseIf IsRealNumber(ws.Cells(rowIndex, "L")) And Not IsTitleText(ws.Cells(rowIndex, "L").Text) Then
+            ElseIf IsRealNumber(ws.Cells(rowIndex, "L")) And Not IsTitleText(ws.Cells(rowIndex, "L").text) Then
                 ws.Cells(rowIndex, "P").Value = ws.Cells(rowIndex, "L").Value
             End If
         End If
     Next rowIndex
-    ' KhÃ´i ph?c Excel
+    ' Khôi ph?c Excel
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    MsgBox "HoÃ n thÃ nh", vbInformation
+    MsgBox "Hoàn thành", vbInformation
 End Sub
 ' ===========================================
-' HÃ m nh?n di?n "T?ng c?ng"
+' Hàm nh?n di?n "T?ng c?ng"
 ' ===========================================
 Function IsTongCong(Txt As String) As Boolean
     Dim cleaned As String
     cleaned = Trim(Txt)
-    ' CÃ¡ch 1: d? dÃ i = 9 vÃ  kÃ½ t? cu?i lÃ  "g"
+    ' Cách 1: d? dài = 9 và ký t? cu?i là "g"
     If Len(cleaned) = 9 Then
         If LCase(Right(cleaned, 1)) = "g" Then
             IsTongCong = True
             Exit Function
         End If
     End If
-    ' CÃ¡ch 2: ki?m tra tr?c ti?p
+    ' Cách 2: ki?m tra tr?c ti?p
     cleaned = LCase(Replace(cleaned, " ", ""))
     If cleaned = "tongcong" Or cleaned = "t?ngc?ng" Then
         IsTongCong = True
@@ -80,7 +81,7 @@ Function IsTongCong(Txt As String) As Boolean
     IsTongCong = False
 End Function
 ' ===========================================
-' Ki?m tra lo?i d? li?u Ã´
+' Ki?m tra lo?i d? li?u ô
 ' ===========================================
 Function IsRealNumber(cell As Range) As Boolean
     On Error Resume Next
@@ -117,13 +118,13 @@ Function HasExternalSheetReference(cell As Range) As Boolean
     End If
     Dim regex As Object
     Set regex = CreateObject("VBScript.RegExp")
-    ' ThÃªm c?t P vÃ o pattern: ki?m tra c? T vÃ  P
+    ' Thêm c?t P vào pattern: ki?m tra c? T và P
     regex.Pattern = "(\$?[TP]\$?\d+|[TP]:[TP])"
     regex.Global = False
     HasExternalSheetReference = regex.Test(f)
 End Function
 ' ===========================================
-' HÃ m chuy?n cÃ´ng th?c
+' Hàm chuy?n công th?c
 ' ===========================================
 Function ConvertMergedColumn(formulaText As String, col1 As String, col2 As String, col3 As String, toCol1 As String, toCol2 As String, toCol3 As String) As String
     Dim result As String
@@ -132,12 +133,12 @@ Function ConvertMergedColumn(formulaText As String, col1 As String, col2 As Stri
     Set regex = CreateObject("VBScript.RegExp")
     regex.Global = True
     regex.IgnoreCase = True
-    ' N?u lÃ  SUM thÃ¬ d?c bi?t: SUM(L..N) ? SUM(P..R)
+    ' N?u là SUM thì d?c bi?t: SUM(L..N) ? SUM(P..R)
     regex.Pattern = "SUM\s*\(\s*" & col1 & "(\d+)\s*:\s*" & col3 & "(\d+)\s*\)"
     If regex.Test(result) Then
         result = regex.Replace(result, "SUM(" & toCol1 & "$1:" & toCol3 & "$2)")
     Else
-        ' N?u khÃ´ng ph?i SUM thÃ¬ thay bÃ¬nh thu?ng
+        ' N?u không ph?i SUM thì thay bình thu?ng
         result = ConvertNormalFormula(result, col1, col2, col3, toCol1, toCol2, toCol3)
     End If
     ConvertMergedColumn = result

@@ -68,7 +68,7 @@ Private Function GetLatestVersion(ByRef latestVersion As String, _
     http.setRequestHeader "Cache-Control", "no-cache"
     http.Send
 
-    If http.Status <> 200 Then Exit Function
+    If http.status <> 200 Then Exit Function
 
     Dim jsonText As String
     jsonText = http.responseText
@@ -159,45 +159,33 @@ End Sub
 Private Sub DownloadAndInstall(ByVal downloadUrl As String, ByVal newVersion As String)
     On Error GoTo ErrorHandler
 
-    ' Download update script from GitHub to temp folder
-    Dim scriptUrl As String
-    scriptUrl = "https://raw.githubusercontent.com/muaroi2002/gafc-audit-helper-releases/main/scripts/update_audit_helper.ps1"
-
-    Dim tempFolder As String
-    tempFolder = Environ("TEMP") & "\gafc_update"
+    ' Use PowerShell script for update
+    Dim xlstartPath As String
+    xlstartPath = Application.StartupPath
 
     Dim updateScript As String
-    updateScript = tempFolder & "\update_audit_helper.ps1"
+    updateScript = xlstartPath & "\..\..\update_audit_helper.ps1"
 
-    ' Create temp folder if not exists
-    On Error Resume Next
-    MkDir tempFolder
-    On Error GoTo ErrorHandler
+    ' Check if script exists in common locations
+    If Dir(updateScript) = "" Then
+        updateScript = Environ("USERPROFILE") & "\Downloads\gafc_audit_helper_installer\scripts\update_audit_helper.ps1"
+    End If
 
-    ' Download script using PowerShell
-    Dim downloadCmd As String
-    downloadCmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command " & _
-                  """Invoke-WebRequest -Uri '" & scriptUrl & "' -OutFile '" & updateScript & "' -UseBasicParsing"""
-
-    Shell downloadCmd, vbHide
-
-    ' Wait for download to complete
-    Application.Wait Now + TimeValue("00:00:03")
-
-    ' Run update script if downloaded successfully
     If Dir(updateScript) <> "" Then
+        ' Run PowerShell update script silently in background
         Dim cmd As String
         cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & updateScript & """"
 
         ' Run update script in background
-        Shell cmd, vbHide
+        shell cmd, vbHide
 
         ' Close Excel to allow update (after brief delay)
         Application.OnTime Now + TimeValue("00:00:02"), "CloseExcelForUpdate"
     Else
         ' Fallback: open download page
-        MsgBox "Cannot download update. Please download manually from GitHub.", vbExclamation
-        Shell "explorer.exe https://github.com/muaroi2002/gafc-audit-helper-releases/releases/latest", vbNormalFocus
+        MsgBox "Cannot find update script. Please download manually from GitHub.", vbExclamation
+
+        shell "explorer.exe https://github.com/muaroi2002/gafc-audit-helper-releases/releases/latest", vbNormalFocus
     End If
 
     Exit Sub
@@ -243,3 +231,5 @@ Public Sub CloseExcelForUpdate()
     Application.DisplayAlerts = False
     Application.Quit
 End Sub
+
+

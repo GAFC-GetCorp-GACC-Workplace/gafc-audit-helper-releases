@@ -1,3 +1,4 @@
+Attribute VB_Name = "Tao_cot"
 Option Explicit
 Public Sub Tao_TH(control As IRibbonControl)
     Dim wb As Workbook
