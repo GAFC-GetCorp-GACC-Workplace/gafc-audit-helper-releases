@@ -117,6 +117,27 @@ def rebuild():
                     # Get only the code part (skip all header/attribute lines)
                     actual_code = '\n'.join(lines[code_start_idx:])
 
+                    # Replace hardcoded fallback version with current version from manifest
+                    # Find: CURRENT_VERSION = "1.0.3"  and replace with new version
+                    import json
+                    manifest_path_temp = BASE_DIR / "releases" / "audit_tool.json"
+                    current_ver = "1.0.3"
+                    if manifest_path_temp.exists():
+                        try:
+                            with open(manifest_path_temp, 'r', encoding='utf-8') as f_temp:
+                                manifest_temp = json.load(f_temp)
+                                current_ver = manifest_temp.get('latest', current_ver)
+                        except:
+                            pass
+
+                    # Replace fallback version in code
+                    import re
+                    actual_code = re.sub(
+                        r'CURRENT_VERSION\s*=\s*"[\d\.]+"',
+                        f'CURRENT_VERSION = "{current_ver}"',
+                        actual_code
+                    )
+
                     # Find ThisWorkbook component
                     tw_comp = vb_proj.VBComponents("ThisWorkbook")
                     code_module = tw_comp.CodeModule
@@ -145,6 +166,26 @@ def rebuild():
                 if content is None:
                     print(f"  [WARNING] Could not read {path.name}: encoding error")
                     continue
+
+                # Replace hardcoded version in all modules (especially modAutoUpdate.bas)
+                import json
+                import re
+                manifest_path_all = BASE_DIR / "releases" / "audit_tool.json"
+                current_ver_all = "1.0.3"
+                if manifest_path_all.exists():
+                    try:
+                        with open(manifest_path_all, 'r', encoding='utf-8') as f_all:
+                            manifest_all = json.load(f_all)
+                            current_ver_all = manifest_all.get('latest', current_ver_all)
+                    except:
+                        pass
+
+                # Replace patterns like: CURRENT_VERSION = "1.0.3"
+                content = re.sub(
+                    r'CURRENT_VERSION\s*=\s*"[\d\.]+"',
+                    f'CURRENT_VERSION = "{current_ver_all}"',
+                    content
+                )
 
                 # Check if Attribute VB_Name exists
                 if 'Attribute VB_Name' not in content:
