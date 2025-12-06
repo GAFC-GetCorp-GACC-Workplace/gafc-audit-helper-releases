@@ -150,11 +150,21 @@ git tag -a "v$VERSION" -m "Release v$VERSION"
 
 # Step 4: Push commits
 echo "[4/5] Pushing commits..."
-git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git main
+if git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git main; then
+    echo "  ✓ Commits pushed successfully"
+else
+    echo "  ✗ Failed to push commits!"
+    exit 1
+fi
 
 # Step 5: Push tag
 echo "[5/5] Pushing tag (this triggers auto-release)..."
-git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git "v$VERSION"
+if git push https://${GITHUB_TOKEN}@github.com/muaroi2002/gafc-audit-helper.git "v$VERSION"; then
+    echo "  ✓ Tag pushed successfully"
+else
+    echo "  ✗ Failed to push tag!"
+    exit 1
+fi
 
 echo ""
 echo "============================================"
