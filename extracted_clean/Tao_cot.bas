@@ -114,20 +114,11 @@ Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Work
         .Range("C4").Value = "" ' Tai khoan nhap tay
         .Range("C4").Interior.Color = RGB(255, 255, 0)
         .Range("C4").Font.Bold = True
-        ' Khu tong hop
+        ' Khu tong hop - chi tao SDDK, SPS/SDCK se duoc Auto_Tinh_TH tu dong tao
         .Range("A5").Value = "SDDK"
-        .Range("A12").Value = "SPS"
-        .Range("A13").Value = "SDCK"
-        .Range("A5:A13").Font.Color = RGB(0, 0, 200)
-        .Range("A5:A13").Font.Bold = True
-        .Range("C12").Formula = "=SUBTOTAL(9,C$6:C11)"
-        .Range("D12").Formula = "=SUBTOTAL(9,D$6:D11)"
-        .Range("C13").Formula = "=MAX(0,(SUBTOTAL(9,$D$5:$D12)-SUBTOTAL(9,$C$5:$C12))*(-1^COLUMN(C$5)))"
-        .Range("D13").Formula = "=MAX(0,(SUBTOTAL(9,$D$5:$D12)-SUBTOTAL(9,$C$5:$C12))*(-1^COLUMN(D$5)))"
-        ' Boi den khu phat sinh
-        .Range("B6:E11").Interior.Color = RGB(242, 242, 242)
-        .Range("B6:E11").Borders.LineStyle = xlContinuous
-        .Range("B6:E11").Borders.Color = RGB(200, 200, 200)
+        .Range("A5").Font.Color = RGB(0, 0, 200)
+        .Range("A5").Font.Bold = True
+        ' Luu y: Khong tao SPS/SDCK o day vi vi tri dong se thay doi theo so luong TK
         ' Khu bieu do / bang phu
         .Range("H1").Value = "Bi" & ChrW(7875) & "u " & ChrW(273) & ChrW(7891)
         .Range("H1:I1").Merge

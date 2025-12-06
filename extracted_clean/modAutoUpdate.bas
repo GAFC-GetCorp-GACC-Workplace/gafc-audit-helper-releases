@@ -22,7 +22,7 @@ Private Function CURRENT_VERSION() As String
 
     ' Fallback if property not set
     If Err.Number <> 0 Or Len(CURRENT_VERSION) = 0 Then
-        CURRENT_VERSION = "1.0.6"  ' Default fallback
+        CURRENT_VERSION = "1.0.8"  ' Default fallback
     End If
     On Error GoTo 0
 End Function
