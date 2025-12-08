@@ -22,7 +22,7 @@ Private Function CURRENT_VERSION() As String
 
     ' Fallback if property not set
     If Err.Number <> 0 Or Len(CURRENT_VERSION) = 0 Then
-        CURRENT_VERSION = "1.0.8"  ' Default fallback
+        CURRENT_VERSION = "1.0.9"  ' Default fallback
     End If
     On Error GoTo 0
 End Function
@@ -159,34 +159,39 @@ End Sub
 Private Sub DownloadAndInstall(ByVal downloadUrl As String, ByVal newVersion As String)
     On Error GoTo ErrorHandler
 
-    ' Use PowerShell script for update
-    Dim xlstartPath As String
-    xlstartPath = Application.StartupPath
+    ' Download update script from GitHub to temp folder
+    Dim tempFolder As String, scriptPath As String
+    tempFolder = Environ("TEMP")
+    scriptPath = tempFolder & "\gafc_update_" & newVersion & ".ps1"
 
-    Dim updateScript As String
-    updateScript = xlstartPath & "\..\..\update_audit_helper.ps1"
+    ' PowerShell script content (embedded)
+    Dim scriptContent As String
+    scriptContent = "# GAFC Audit Helper Auto-Update Script" & vbCrLf & _
+                   "$xlam = '" & downloadUrl & "'" & vbCrLf & _
+                   "$dest = Join-Path $env:APPDATA 'Microsoft\Excel\XLSTART\gafc_audit_helper.xlam'" & vbCrLf & _
+                   "Start-Sleep -Seconds 3" & vbCrLf & _
+                   "try {" & vbCrLf & _
+                   "    Invoke-WebRequest -Uri $xlam -OutFile $dest -UseBasicParsing" & vbCrLf & _
+                   "    Write-Host 'Update completed successfully'" & vbCrLf & _
+                   "} catch {" & vbCrLf & _
+                   "    Write-Host 'Update failed:' $_.Exception.Message" & vbCrLf & _
+                   "}" & vbCrLf & _
+                   "Remove-Item $PSCommandPath -Force"
 
-    ' Check if script exists in common locations
-    If Dir(updateScript) = "" Then
-        updateScript = Environ("USERPROFILE") & "\Downloads\gafc_audit_helper_installer\scripts\update_audit_helper.ps1"
-    End If
+    ' Write script to temp file
+    Dim fso As Object, ts As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.CreateTextFile(scriptPath, True)
+    ts.Write scriptContent
+    ts.Close
 
-    If Dir(updateScript) <> "" Then
-        ' Run PowerShell update script silently in background
-        Dim cmd As String
-        cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & updateScript & """"
+    ' Run PowerShell update script in background
+    Dim cmd As String
+    cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & scriptPath & """"
+    shell cmd, vbHide
 
-        ' Run update script in background
-        shell cmd, vbHide
-
-        ' Close Excel to allow update (after brief delay)
-        Application.OnTime Now + TimeValue("00:00:02"), "CloseExcelForUpdate"
-    Else
-        ' Fallback: open download page
-        MsgBox "Cannot find update script. Please download manually from GitHub.", vbExclamation
-
-        shell "explorer.exe https://github.com/muaroi2002/gafc-audit-helper-releases/releases/latest", vbNormalFocus
-    End If
+    ' Close Excel to allow update (after brief delay)
+    Application.OnTime Now + TimeValue("00:00:02"), "CloseExcelForUpdate"
 
     Exit Sub
 
