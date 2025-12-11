@@ -1,14 +1,15 @@
 Attribute VB_Name = "Tao_format_de_xu_ly_bon_so_1"
 Option Explicit
 Public Sub TaoTB(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     Dim wsOld As Worksheet
     Dim wb As Workbook
-    Set wb = ActiveWorkbook ' ?? Làm vi?c v?i file dang m?
+    Set wb = ActiveWorkbook ' ?? LÃ m vi?c v?i file dang m?
     ' T?o m?i sheet "TB"
     Set ws = wb.Sheets.Add(After:=wb.Sheets(wb.Sheets.Count))
     ws.Name = "Xu_ly"
-    ' Tiêu d?
+    ' TiÃªu d?
     ws.Range("A1:G1").Value = Array("T" & ChrW(224) & "i kho" & ChrW(7843) & "n", "N" & ChrW(7907), "C" & ChrW(243), "N" & ChrW(7907), "C" & ChrW(243), "N" & ChrW(7907), "C" & ChrW(243))
     ' Filter + d?nh d?ng
     ws.Range("A1:G1").AutoFilter
@@ -20,5 +21,5 @@ Public Sub TaoTB(control As IRibbonControl)
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
     End With
-    MsgBox "Done", vbInformation
+    InfoToast "Done"
 End Sub

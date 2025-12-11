@@ -1,12 +1,13 @@
 Attribute VB_Name = "Chuyen_dau_ki"
 Option Explicit
 Public Sub chuyendauki(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     Set ws = ActiveSheet
-    ' --- Ngu?i d˘ng nh?p thÙng tin ---
+    ' --- Ngu?i d√πng nh?p th√¥ng tin ---
     Dim colFrom As String, colTo As String, colClear As String
     colFrom = UCase(InputBox("Nhap cot cuoi ki(nhap - neu chi muon xoa data):", "Cot cuoi ki"))
-    ' N?u ngu?i d˘ng ch? mu?n xÛa
+    ' N?u ngu?i d√πng ch? mu?n x√≥a
     If colFrom = "-" Then
         colClear = UCase(InputBox("Nhap cot can xoa:", "Xoa cot"))
         If colClear = "" Or colClear = "-" Then
@@ -16,7 +17,7 @@ Public Sub chuyendauki(control As IRibbonControl)
         Call OnlyClearData(ws, colClear)
         Exit Sub
     End If
-    ' N?u ngu?i d˘ng mu?n copy (cÛ th? cÛ ho?c khÙng xÛa)
+    ' N?u ngu?i d√πng mu?n copy (c√≥ th? c√≥ ho?c kh√¥ng x√≥a)
     colTo = UCase(InputBox("Nhap cot dau ki", "Cot dau ki"))
     If colFrom = "" Or colTo = "" Then
         MsgBox "Ban chua nhap cot dau ki", vbExclamation
@@ -39,7 +40,7 @@ Public Sub chuyendauki(control As IRibbonControl)
         ws.Range(colTo & Split(copyRanges(i), ":")(0) & ":" & colTo & Split(copyRanges(i), ":")(1)).Value = _
             ws.Range(colFrom & Split(copyRanges(i), ":")(0) & ":" & colFrom & Split(copyRanges(i), ":")(1)).Value
     Next i
-    ' === C‘NG TH?C ===
+    ' === C√îNG TH?C ===
     ws.Range(colTo & "10").Formula = "=SUM(" & colTo & "11:" & colTo & "14)"
     ws.Range(colTo & "17").Formula = "=SUM(" & colTo & "18:" & colTo & "21)"
     ws.Range(colTo & "22").Formula = "=SUM(" & colTo & "23:" & colTo & "25)"
@@ -62,18 +63,18 @@ Public Sub chuyendauki(control As IRibbonControl)
     ws.Range(colTo & "160").Formula = "=SUM(" & colTo & "161:" & colTo & "162)"
     ws.Range(colTo & "172").Formula = "=SUM(" & colTo & "173:" & colTo & "176)"
     ws.Range(colTo & "60").Formula = "=" & colTo & "61+" & colTo & "71+" & colTo & "82+" & colTo & "86+" & colTo & "90+" & colTo & "98"
-    ' === XO¡ D? LI?U (n?u ngu?i d˘ng mu?n) ===
+    ' === XO√Å D? LI?U (n?u ngu?i d√πng mu?n) ===
     If colClear <> "-" And colClear <> "" Then
         Call OnlyClearData(ws, colClear)
     End If
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    MsgBox "Done" & vbCrLf & _
+    InfoToast "Done" & vbCrLf & _
            "?? Copy t?: " & colFrom & " ? " & colTo & vbCrLf & _
-           IIf(colClear = "-" Or colClear = "", "? KhÙng th?c hi?n xÛa.", "?? –„ xÛa d? li?u t?i c?t " & colClear), vbInformation
+           IIf(colClear = "-" Or colClear = "", "? Kh√¥ng th?c hi?n x√≥a.", "?? √ê√£ x√≥a d? li?u t?i c?t " & colClear), vbInformation
 End Sub
-' === H¿M PH? ===
+' === H√ÄM PH? ===
 Private Sub OnlyClearData(ws As Worksheet, colClear As String)
     Dim clearRanges As Variant, i As Long
     clearRanges = Array("11:14", "18:21", "23:25", "28:37", "40:48", _
@@ -85,6 +86,6 @@ Private Sub OnlyClearData(ws As Worksheet, colClear As String)
     For i = LBound(clearRanges) To UBound(clearRanges)
         ws.Range(colClear & Split(clearRanges(i), ":")(0) & ":" & colClear & Split(clearRanges(i), ":")(1)).ClearContents
     Next i
-    MsgBox "Done, da xoa xong " & colClear, vbInformation
+    InfoToast "Done, da xoa xong " & colClear
 End Sub
 

@@ -3,7 +3,153 @@ Option Explicit
 Public Sub Test_Xu_ly_NKC()
     Xu_ly_NKC1111 Nothing
 End Sub
+
+' Bo sung cac cot thieu cho sheet NKC da paste
+Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
+    Dim lastRow As Long, r As Long
+    Dim ngayHT As Date, ngayCT As Date
+    Dim tkNo As String, tkCo As String
+
+    On Error Resume Next
+    lastRow = wsNKC.Cells(wsNKC.Rows.Count, 1).End(xlUp).Row
+    On Error GoTo 0
+
+    If lastRow < 3 Then Exit Sub
+
+    ' Kiem tra xem co du cot khong (can 11 cot)
+    Dim hasAllColumns As Boolean
+    hasAllColumns = True
+
+    ' Neu chua co day du 11 cot, bo sung
+    If wsNKC.Cells(2, 11).Value = "" Then hasAllColumns = False
+
+    Application.ScreenUpdating = False
+
+    ' Bo sung du lieu cho cac dong
+    For r = 3 To lastRow
+        If wsNKC.Cells(r, 1).Value <> "" Then
+            ' Lay gia tri co san
+            ngayHT = wsNKC.Cells(r, 1).Value
+            tkNo = Trim(CStr(wsNKC.Cells(r, 8).Value))
+            tkCo = Trim(CStr(wsNKC.Cells(r, 9).Value))
+
+            ' Bo sung Ngay chung tu (cot 2) = Ngay hach toan neu thieu
+            If wsNKC.Cells(r, 2).Value = "" Or Not IsDate(wsNKC.Cells(r, 2).Value) Then
+                wsNKC.Cells(r, 2).Value = ngayHT
+            End If
+            ngayCT = wsNKC.Cells(r, 2).Value
+
+            ' Bo sung Thang (cot 3) tu Ngay hach toan
+            If wsNKC.Cells(r, 3).Value = "" Then
+                wsNKC.Cells(r, 3).Value = Month(ngayHT)
+            End If
+
+            ' Bo sung No (cot 6) va Co (cot 7) tu TK
+            If wsNKC.Cells(r, 6).Value = "" Then
+                wsNKC.Cells(r, 6).Value = tkNo
+            End If
+            If wsNKC.Cells(r, 7).Value = "" Then
+                wsNKC.Cells(r, 7).Value = tkCo
+            End If
+        End If
+    Next r
+
+    ' Tong tai I1/J1 bang SUBTOTAL (khong chen dong moi)
+    wsNKC.Cells(1, 9).Value = "T" & ChrW(7893) & "ng :"
+    wsNKC.Cells(1, 10).Formula = "=SUBTOTAL(9,J3:J" & lastRow & ")"
+    wsNKC.Cells(1, 9).Font.Bold = True
+    wsNKC.Cells(1, 10).Font.Bold = True
+    wsNKC.Cells(1, 10).NumberFormat = "#,##0"
+    wsNKC.Cells(1, 9).Font.Size = 11
+    wsNKC.Cells(1, 10).Font.Size = 11
+
+    Application.ScreenUpdating = True
+End Sub
+
+' Create NKC template for manual data entry
+Public Sub Tao_Template_NKC(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
+    Dim wsTemplate As Worksheet
+
+    Set wb = ActiveWorkbook
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+
+    ' Delete existing NKC sheet if exists
+    On Error Resume Next
+    wb.Worksheets("NKC").Delete
+    On Error GoTo 0
+
+    ' Create new NKC sheet
+    Set wsTemplate = wb.Worksheets.Add
+    wsTemplate.Name = "NKC"
+
+    ' Create header
+    With wsTemplate
+        .Cells(2, 1).Value = "Ngay hach toan"
+        .Cells(2, 2).Value = "Ngay chung tu"
+        .Cells(2, 3).Value = "Thang"
+        .Cells(2, 4).Value = "So hoa don"
+        .Cells(2, 5).Value = "Dien giai"
+        .Cells(2, 6).Value = "No"
+        .Cells(2, 7).Value = "Co"
+        .Cells(2, 8).Value = "No TK"
+        .Cells(2, 9).Value = "Co TK"
+        .Cells(2, 10).Value = "So tien"
+        .Cells(2, 11).Value = "Can review"
+
+        ' Format header
+        .Range("A2:K2").Font.Bold = True
+        .Range("A2:K2").Interior.Color = RGB(220, 230, 241)
+        .Range("A2:K2").AutoFilter
+        .Columns("A:K").AutoFit
+
+        ' Add instruction
+        .Cells(1, 1).Value = "Template NKC - Paste your processed data starting from row 3"
+        .Cells(1, 1).Font.Bold = True
+        .Cells(1, 1).Font.Color = RGB(0, 112, 192)
+    End With
+
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+
+    InfoToast "NKC template created successfully! Paste data từ dòng 3."
+End Sub
+Public Sub Clear_NKC_Filter()
+    Dim ws As Worksheet
+    On Error Resume Next
+    If ActiveWorkbook Is Nothing Then Exit Sub
+    Set ws = ActiveWorkbook.Sheets("NKC")
+    On Error GoTo 0
+    If ws Is Nothing Then Exit Sub
+
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    If ws.FilterMode Then ws.ShowAllData
+    ws.Rows.Hidden = False
+    On Error GoTo 0
+    Application.ScreenUpdating = True
+    FixClearFilterButton ws
+End Sub
+Private Sub FixClearFilterButton(ws As Worksheet)
+    Dim btn As Button
+    On Error Resume Next
+    For Each btn In ws.Buttons
+        If btn.Name = "btnClearFilter_NKC" Or (btn.Left >= ws.Cells(1, 8).Left - 0.5 And btn.Left < ws.Cells(1, 9).Left) Then
+            btn.Caption = "X" & ChrW(243) & "a l" & ChrW(7885) & "c"
+            btn.Placement = xlMoveAndSize
+            btn.Top = ws.Cells(1, 8).Top + 1
+            btn.Left = ws.Cells(1, 8).Left + 1
+            btn.Width = ws.Cells(1, 8).Width - 2
+            btn.Height = ws.Rows(1).Height - 2
+            btn.Characters.Font.Size = 9
+            Exit For
+        End If
+    Next btn
+End Sub
 Public Sub Chinh_Format_NKC_va_Pivot(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim errs As String
     On Error Resume Next
     Application.Run "Chinh_Format_NKC"
@@ -26,6 +172,7 @@ End Sub
 ' Tao mau TB va test nhanh (gom vao 1 module de import 1 lan)
 ' Xu ly NKC -> tao sheet NKC -> tinh TB (neu co)
 Public Sub Xu_Ly_NKC_TB(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wb As Workbook
     Dim wsNguon As Worksheet
     Set wb = ActiveWorkbook
@@ -54,6 +201,7 @@ Public Sub Xu_Ly_NKC_TB(control As IRibbonControl)
     On Error GoTo 0
 End Sub
 Public Sub Xu_ly_NKC1111(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wsNguon As Worksheet, wsKetQua As Worksheet
     Dim wb As Workbook
     Dim dictGroup As Object
@@ -61,8 +209,25 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim arrData As Variant
     Dim key As Variant, r As Variant
     Dim pivotErr As String, thMsg As String
+    Dim wsNKCExists As Worksheet
+
     Set wb = ActiveWorkbook
-    ' Uu tien sheet "So Nhat Ky Chung" neu co, bat ke dang dung sheet nao
+
+    ' Check if NKC sheet already exists (user used template)
+    On Error Resume Next
+    Set wsNKCExists = wb.Sheets("NKC")
+    On Error GoTo 0
+
+    If Not wsNKCExists Is Nothing Then
+        ' NKC sheet exists - skip processing, go straight to next steps
+        InfoToast "Ph" & ChrW(225) & "t hi" & ChrW(7879) & "n sheet NKC " & ChrW(273) & ChrW(227) & " t" & ChrW(7891) & "n t" & ChrW(7841) & "i! " & _
+                 "B" & ChrW(7887) & " qua b" & ChrW(432) & ChrW(7899) & "c x" & ChrW(7917) & " l" & ChrW(253) & ", ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c ti" & ChrW(7871) & "p theo..."
+
+        ' Continue with next steps (TH, Pivot, etc.)
+        GoTo SkipProcessing
+    End If
+
+    ' Normal flow: Process raw data
     On Error Resume Next
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
@@ -353,21 +518,16 @@ NextGroup:
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    ' Hien thi ket qua NKC truoc
-    MsgBox "X" & ChrW(7916) & " L" & ChrW(221) & " NKC HO" & ChrW(192) & "N TH" & ChrW(192) & "NH!" & vbCrLf & vbCrLf & _
-           "T" & ChrW(7893) & "ng s" & ChrW(7889) & " b" & ChrW(250) & "t to" & ChrW(225) & "n output: " & (dongOut - 1) & vbCrLf & _
-           "S" & ChrW(7889) & " nh" & ChrW(243) & "m B" & ChrW(218) & "T TO" & ChrW(193) & "N B" & ChrW(7848) & "N: " & countDirty & " ch" & ChrW(7913) & "ng t" & ChrW(7915) & vbCrLf & _
-           "S" & ChrW(7889) & " d" & ChrW(242) & "ng C" & ChrW(7846) & "N REVIEW (t" & ChrW(244) & " v" & ChrW(224) & "ng): " & countReview, vbInformation
+    ' Hien thi ket qua NKC truoc (toast tu tat)
+    InfoToast "X" & ChrW(7917) & " l" & ChrW(253) & " NKC ho" & ChrW(224) & "n th" & ChrW(224) & "nh! Output: " & (dongOut - 1) & _
+              "; Nh" & ChrW(243) & "m b" & ChrW(7845) & "t to" & ChrW(224) & "n: " & countDirty & "; C" & ChrW(7847) & "n review: " & countReview
     ' Sau do moi tinh TB (neu co)
     Dim tbMsg As String
     If WorksheetExists("TB", wb) Then
         tbMsg = Auto_Tinh_TB(wsKetQua)
-        If tbMsg <> "" Then
-            MsgBox "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG!" & tbMsg, vbInformation
-        End If
+        If tbMsg <> "" Then InfoToast "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG! " & tbMsg
     Else
-        MsgBox "C" & ChrW(7842) & "NH B" & ChrW(193) & "O: Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y sheet TB!" & vbCrLf & vbCrLf & _
-               "Vui l" & ChrW(242) & "ng t" & ChrW(7841) & "o m" & ChrW(7851) & "u c" & ChrW(243) & " sheet TB " & ChrW(273) & ChrW(7875) & " t" & ChrW(7921) & " " & ChrW(273) & ChrW(7897) & "ng t" & ChrW(237) & "nh to" & ChrW(225) & "n.", vbExclamation
+        WarnToast "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y sheet TB! T" & ChrW(7841) & "o m" & ChrW(7851) & "u TB tr" & ChrW(432) & ChrW(7899) & "c r" & ChrW(7891) & "i t" & ChrW(237) & "nh."
     End If
     ' Chay Pivot sau khi xu ly NKC/TB
     On Error Resume Next
@@ -383,11 +543,72 @@ NextGroup:
     End If
     ' Cap nhat sheet TH neu co
     thMsg = Auto_Tinh_TH(wsKetQua)
-    If thMsg <> "" Then MsgBox thMsg, vbExclamation
+    If thMsg <> "" Then WarnToast thMsg
+
+SkipProcessing:
     ' Bat auto refresh TH sau khi da co NKC/TB
     On Error Resume Next
     Application.Run "Enable_TH_AutoRefresh"
     On Error GoTo 0
+
+    ' Khi skip processing (da co NKC), van can chay cac buoc tiep theo
+    Dim wsNKCSkip As Worksheet
+    Dim tbMsgSkip As String, thMsgSkip As String
+
+    ' Lay sheet NKC
+    On Error Resume Next
+    Set wsNKCSkip = wb.Worksheets("NKC")
+    On Error GoTo 0
+
+    ' Bo sung cac cot thieu cho NKC neu can
+    If Not wsNKCSkip Is Nothing Then
+        Bo_Sung_Cot_NKC wsNKCSkip
+    End If
+
+    ' Buoc 1: Tinh toan TB neu co sheet TB
+    If WorksheetExists("TB", wb) And Not wsNKCSkip Is Nothing Then
+        tbMsgSkip = Auto_Tinh_TB(wsNKCSkip)
+        If tbMsgSkip <> "" Then
+            MsgBox "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG!" & tbMsgSkip, vbInformation
+        End If
+    End If
+
+    ' Buoc 2: Tao/Cap nhat TH
+    Dim wsTHCheck As Worksheet
+    On Error Resume Next
+    Set wsTHCheck = wb.Worksheets("TH")
+    On Error GoTo 0
+
+    If wsTHCheck Is Nothing Then
+        ' Chua co TH, tao moi
+        On Error Resume Next
+        Application.Run "Tao_TH", Nothing
+        If Err.Number <> 0 Then
+            MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y Tao_TH procedure!", vbExclamation
+            Err.Clear
+        End If
+        On Error GoTo 0
+    Else
+        ' TH da co, cap nhat
+        If Not wsNKCSkip Is Nothing Then
+            thMsgSkip = Auto_Tinh_TH(wsNKCSkip)
+            If thMsgSkip <> "" Then WarnToast thMsgSkip
+        End If
+    End If
+
+    ' Buoc 3: Tao Pivot
+    On Error Resume Next
+    Application.Run "Tao_Pivot_AnToan"
+    If Err.Number <> 0 Then
+        MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Tao_Pivot_AnToan kh" & ChrW(244) & "ng ch" & ChrW(7841) & "y " & ChrW(273) & ChrW(432) & ChrW(7907) & "c." & vbCrLf & _
+               "Chi ti" & ChrW(7871) & "t: " & Err.Description, vbExclamation
+        Err.Clear
+    End If
+    On Error GoTo 0
+
+    ' Additional steps after processing (or skipping)
+    MsgBox ChrW(272) & ChrW(227) & " ho" & ChrW(224) & "n t" & ChrW(7845) & "t!" & vbCrLf & _
+           "C" & ChrW(243) & " th" & ChrW(7875) & " ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c kh" & ChrW(225) & "c n" & ChrW(7871) & "u c" & ChrW(7847) & "n.", vbInformation
 End Sub
 Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     Dim wsTB As Worksheet, wsSource As Worksheet
@@ -512,6 +733,7 @@ ErrorHandler:
 End Function
 ' Wrapper cho Ribbon button - Cap nhat dropdown TH
 Public Sub Update_TH_Dropdown_Button(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Update_TH_Dropdown
     MsgBox "C" & ChrW(7853) & "p nh" & ChrW(7853) & "t dropdown TH th" & ChrW(224) & "nh c" & ChrW(244) & "ng!", vbInformation
 End Sub
@@ -617,6 +839,7 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
     Dim oppLenSetting As Long
     Dim totalDebitPS As Double, totalCreditPS As Double
     Dim sdBalance As Double
+    Dim filterState As Collection
     On Error GoTo ErrHandler
     Set wb = wsNKC.Parent
     On Error Resume Next
@@ -638,6 +861,11 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
         Auto_Tinh_TH = "Khong the tao sheet TH."
         Exit Function
     End If
+    ' Luu trang thai filter NKC va tam thoi bo loc de tinh tren full data
+    Set filterState = CaptureAutoFilterState(wsNKC)
+    On Error Resume Next
+    If wsNKC.FilterMode Then wsNKC.ShowAllData
+    On Error GoTo ErrHandler
     tkRaw = NormalizeAccount(wsTH.Range("C4").Value)
     If tkRaw = "" Then
         Auto_Tinh_TH = "" ' silent if chua nhap TK
@@ -672,6 +900,8 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
         Exit Function
     End If
     tkRoot = Left$(tkRaw, lenMain)
+    ' Clear vung du lieu cu de tranh sot dong khi doi cap TK
+    ClearTHDataArea wsTH
     ' Tinh so du dau ky tu TB neu co (uu tien khop dung cap TK, tranh double TK cap 3/4)
     If Not wsTB Is Nothing Then
         Dim duNoExact As Double, duCoExact As Double
@@ -732,40 +962,39 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
             End If
         End If
     Next r
-    ' Tinh so dong thuc te can hien thi
-    Dim debitCount As Long, creditCount As Long, actualSlots As Long
-    debitCount = dictDebit.Count
-    creditCount = dictCredit.Count
-    actualSlots = Application.Max(debitCount, creditCount)
-    If actualSlots < 1 Then actualSlots = 1 ' it nhat 1 dong de tranh loi
-
-    ' Tinh vi tri dong SPS va SDCK dong
-    Dim rowSPS As Long, rowSDCK As Long
-    rowSPS = 5 + actualSlots + 1  ' SDDK o 5, phat sinh tu 6, SPS la dong tiep theo
-    rowSDCK = rowSPS + 1
 
     ' Ghi so du dau ky
     wsTH.Range("C5").Value = duNoDK
     wsTH.Range("D5").Value = duCoDK
 
-    ' Clear vung du lieu cu (dong, mo rong them 20 dong de dam bao)
-    Dim lastClearRow As Long
-    lastClearRow = rowSDCK + 20
-    wsTH.Range("A6:E" & lastClearRow).ClearContents  ' Clear ca cot A de xoa nhan SPS/SDCK cu
-    wsTH.Range("I7:K" & (lastClearRow + 1)).ClearContents
+    ' Check xem co bat Rut gon khong (D4)
+    Dim enableGrouping As Boolean
+    enableGrouping = True  ' Mac dinh
+    On Error Resume Next
+    If wsTH.Range("D4").Value = False Then enableGrouping = False
+    On Error GoTo ErrHandler
+
+    ' Xu ly va ghi phat sinh No/Co, sau do tinh actualSlots
+    Dim maxDebit As Long, maxCredit As Long
+    maxDebit = 0
+    maxCredit = 0
 
     ' Ghi phat sinh No (TK goc o ben No -> doi ung o col B/C)
     If dictDebit.Count > 0 Then
         pairs = SortDictByAbsWithFull(dictDebit, dictDebitFull)
-        Dim maxDebit As Long
+        ' Kiem tra xem co TK dai (>=6) khong, neu co thi nhom theo cap 3 (neu bat Rut gon)
+        Dim hasLongDebit As Boolean
+        hasLongDebit = CheckHasLongTK(dictDebitFull)
+
+        If hasLongDebit And enableGrouping Then
+            ' Nhom lai theo cap 3 (GroupByLevel3 da sort san)
+            pairs = GroupByLevel3(pairs)
+        End If
+
         maxDebit = UBound(pairs, 1)
         For i = 1 To maxDebit
             Dim dispOppN As String
-            If oppLenSetting > 0 And oppLenSetting <= 3 Then
-                dispOppN = pairs(i, 1) ' key rut gon
-            Else
-                dispOppN = pairs(i, 3) ' full
-            End If
+            dispOppN = pairs(i, 1)
             wsTH.Cells(5 + i, 2).Value = IIf(dispOppN <> "", "<" & dispOppN & ">", "")
             wsTH.Cells(5 + i, 3).Value = pairs(i, 2) ' so tien
         Next i
@@ -774,19 +1003,51 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
     ' Ghi phat sinh Co (TK goc o ben Co -> doi ung o col D/E)
     If dictCredit.Count > 0 Then
         pairs = SortDictByAbsWithFull(dictCredit, dictCreditFull)
-        Dim maxCredit As Long
+        ' Kiem tra xem co TK dai (>=6) khong, neu co thi nhom theo cap 3 (neu bat Rut gon)
+        Dim hasLongCredit As Boolean
+        hasLongCredit = CheckHasLongTK(dictCreditFull)
+
+        If hasLongCredit And enableGrouping Then
+            ' Nhom lai theo cap 3 (GroupByLevel3 da sort san)
+            pairs = GroupByLevel3(pairs)
+        End If
+
         maxCredit = UBound(pairs, 1)
         For i = 1 To maxCredit
             Dim dispOppC As String
-            If oppLenSetting > 0 And oppLenSetting <= 3 Then
-                dispOppC = pairs(i, 1)
-            Else
-                dispOppC = pairs(i, 3)
-            End If
+            dispOppC = pairs(i, 1)
             wsTH.Cells(5 + i, 4).Value = pairs(i, 2) ' so tien
             wsTH.Cells(5 + i, 5).Value = IIf(dispOppC <> "", "<" & dispOppC & ">", "")
         Next i
     End If
+
+    ' Tinh actualSlots SAU KHI da group (dua vao so dong thuc te)
+    Dim actualSlots As Long
+    actualSlots = Application.Max(maxDebit, maxCredit)
+    If actualSlots < 1 Then actualSlots = 1
+
+    ' Tinh vi tri dong SPS va SDCK
+    Dim rowSPS As Long, rowSDCK As Long
+    rowSPS = 5 + actualSlots + 1
+    rowSDCK = rowSPS + 1
+
+    ' Clear vung du lieu cu phia duoi (dong thua)
+    Dim lastClearRow As Long
+    Dim lastExisting As Long
+    lastExisting = wsTH.Cells(wsTH.Rows.Count, "A").End(xlUp).Row
+    lastExisting = Application.Max(lastExisting, wsTH.Cells(wsTH.Rows.Count, "E").End(xlUp).Row)
+    lastClearRow = Application.Max(rowSDCK + 20, lastExisting)
+
+    ' Clear dong thua giua data va SPS
+    If actualSlots > 0 Then
+        wsTH.Range("A" & (6 + actualSlots) & ":E" & (rowSPS - 1)).ClearContents
+    End If
+
+    ' Clear dong thua phia duoi SDCK
+    wsTH.Range("A" & (rowSDCK + 1) & ":E" & lastClearRow).ClearContents
+    wsTH.Range("B" & (rowSDCK + 1) & ":E" & lastClearRow).Interior.Pattern = xlNone
+    wsTH.Range("B" & (rowSDCK + 1) & ":E" & lastClearRow).Borders.LineStyle = xlNone
+    wsTH.Range("I7:K" & (lastClearRow + 1)).ClearContents
 
     ' Format khu vuc phat sinh (background + border)
     Dim firstDataRow As Long, lastDataRow As Long
@@ -810,11 +1071,53 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
     sdBalance = (duNoDK - duCoDK) + (totalDebitPS - totalCreditPS)
     wsTH.Cells(rowSDCK, 3).Value = Application.Max(sdBalance, 0)
     wsTH.Cells(rowSDCK, 4).Value = Application.Max(-sdBalance, 0)
+    ' Khoi phuc filter NKC (neu co)
+    RestoreAutoFilterState wsNKC, filterState
     Auto_Tinh_TH = ""
     Exit Function
 ErrHandler:
+    RestoreAutoFilterState wsNKC, filterState
     Auto_Tinh_TH = "Khong the cap nhat sheet TH. Chi tiet: " & Err.Description
 End Function
+Private Function CaptureAutoFilterState(ws As Worksheet) As Collection
+    Dim af As AutoFilter
+    Dim state As Collection
+    Dim i As Long
+    On Error Resume Next
+    Set af = ws.AutoFilter
+    If af Is Nothing Then Exit Function
+    Set state = New Collection
+    For i = 1 To af.Filters.Count
+        If af.Filters(i).On Then
+            Dim dict As Object
+            Set dict = CreateObject("Scripting.Dictionary")
+            dict("Field") = i
+            dict("Operator") = af.Filters(i).Operator
+            On Error Resume Next
+            dict("Criteria1") = af.Filters(i).Criteria1
+            dict("Criteria2") = af.Filters(i).Criteria2
+            On Error GoTo 0
+            state.Add dict
+        End If
+    Next i
+    Set CaptureAutoFilterState = state
+End Function
+Private Sub RestoreAutoFilterState(ws As Worksheet, state As Collection)
+    Dim afRange As Range
+    Dim item As Variant
+    If state Is Nothing Then Exit Sub
+    On Error Resume Next
+    Set afRange = ws.AutoFilter.Range
+    If afRange Is Nothing Then Exit Sub
+    For Each item In state
+        If item.Exists("Criteria2") And Not IsEmpty(item("Criteria2")) Then
+            afRange.AutoFilter Field:=item("Field"), Criteria1:=item("Criteria1"), _
+                               Operator:=item("Operator"), Criteria2:=item("Criteria2")
+        Else
+            afRange.AutoFilter Field:=item("Field"), Criteria1:=item("Criteria1")
+        End If
+    Next item
+End Sub
 Private Function NormalizeAccount(v As Variant) As String
     Dim s As String
     s = Trim$(CStr(v))
@@ -825,6 +1128,18 @@ Private Function NormalizeAccount(v As Variant) As String
     If Right$(s, 2) = ".0" Then s = Left$(s, Len(s) - 2)
     NormalizeAccount = s
 End Function
+Private Sub ClearTHDataArea(wsTH As Worksheet)
+    Dim lastB As Long, lastE As Long, lastA As Long, lastRow As Long
+    lastB = wsTH.Cells(wsTH.Rows.Count, "B").End(xlUp).Row
+    lastE = wsTH.Cells(wsTH.Rows.Count, "E").End(xlUp).Row
+    lastA = wsTH.Cells(wsTH.Rows.Count, "A").End(xlUp).Row
+    lastRow = Application.Max(lastB, lastE, lastA, 200)
+    If lastRow < 6 Then lastRow = 6
+    wsTH.Range("A6:E" & lastRow).ClearContents
+    wsTH.Range("B6:E" & lastRow).Interior.Pattern = xlNone
+    wsTH.Range("B6:E" & lastRow).Borders.LineStyle = xlNone
+    wsTH.Range("I7:K" & (lastRow + 1)).ClearContents
+End Sub
 Private Function GetPrefixLenFromDict(tk As String, dict4 As Object, Optional overrideLen As Long = 0) As Long
     Dim safeLen As Long
     safeLen = Len(tk)
@@ -1300,6 +1615,7 @@ End Function
 ' Ham Tinh Toan TB (Trial Balance)
 ' ===================================================================
 Public Sub Tinh_Toan_TB(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wsNKC As Worksheet, wsTB As Worksheet, wsSource As Worksheet
     Dim wb As Workbook
     Dim lastRowNKC As Long, lastRowTB As Long, lastRowSource As Long
@@ -1442,5 +1758,101 @@ Private Function GetMonthValue(vDate As Variant) As Variant
     End If
 End Function
 
+Private Function CheckHasLongTK(dictFull As Object) As Boolean
+    ' Kiem tra xem trong dictFull co TK nao dai >= 6 ky tu khong
+    Dim keys As Variant, i As Long, tkVal As String
+    CheckHasLongTK = False
+    If dictFull Is Nothing Then Exit Function
+    If dictFull.Count = 0 Then Exit Function
+
+    keys = dictFull.keys
+    For i = 0 To UBound(keys)
+        tkVal = CStr(keys(i))
+        If Len(tkVal) >= 6 Then
+            CheckHasLongTK = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Private Function GroupByLevel3(pairs As Variant) As Variant
+    ' Nhom lai pairs theo cap 3 (rut gon TK ve 3 ky tu) va cong don so tien
+    ' Input: pairs(i, 1) = key, pairs(i, 2) = amount, pairs(i, 3) = fullTK
+    ' Output: pairs array voi (tk3, total_amount)
+    Dim grouped As Object
+    Dim i As Long, tkFull As String, tk3 As String, amount As Double
+    Set grouped = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To UBound(pairs, 1)
+        tkFull = CStr(pairs(i, 3)) ' full TK
+        amount = CDbl(pairs(i, 2))
+
+        ' Rut gon ve cap 3
+        If Len(tkFull) >= 3 Then
+            tk3 = Left$(tkFull, 3)
+        Else
+            tk3 = tkFull
+        End If
+
+        ' Cong don so tien theo nhom cap 3
+        If grouped.Exists(tk3) Then
+            grouped(tk3) = grouped(tk3) + amount
+        Else
+            grouped.Add tk3, amount
+        End If
+    Next i
+
+    ' Convert dict thanh pairs array va sort
+    GroupByLevel3 = DictToPairsSorted(grouped)
+End Function
+
+Private Function DictToPairsSorted(dict As Object) As Variant
+    ' Convert Dictionary thanh pairs array va sort giam dan theo abs value
+    ' Output: pairs(i, 1) = key, pairs(i, 2) = value
+    Dim n As Long, keys As Variant, vals() As Double
+    Dim i As Long, j As Long
+    Dim tmpVal As Double, tmpKey As Variant
+    Dim res() As Variant
+
+    n = dict.Count
+    If n = 0 Then
+        ReDim res(1 To 1, 1 To 2)
+        res(1, 1) = ""
+        res(1, 2) = 0
+        DictToPairsSorted = res
+        Exit Function
+    End If
+
+    keys = dict.keys
+    ReDim vals(0 To n - 1)
+
+    ' Copy values
+    For i = 0 To n - 1
+        vals(i) = dict(keys(i))
+    Next i
+
+    ' Bubble sort giam dan theo abs
+    For i = 0 To n - 2
+        For j = i + 1 To n - 1
+            If Abs(vals(j)) > Abs(vals(i)) Then
+                tmpVal = vals(i)
+                vals(i) = vals(j)
+                vals(j) = tmpVal
+                tmpKey = keys(i)
+                keys(i) = keys(j)
+                keys(j) = tmpKey
+            End If
+        Next j
+    Next i
+
+    ' Build result array
+    ReDim res(1 To n, 1 To 2)
+    For i = 0 To n - 1
+        res(i + 1, 1) = keys(i)
+        res(i + 1, 2) = vals(i)
+    Next i
+
+    DictToPairsSorted = res
+End Function
 
 

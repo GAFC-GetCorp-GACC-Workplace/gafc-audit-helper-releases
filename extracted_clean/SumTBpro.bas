@@ -1,6 +1,7 @@
 Attribute VB_Name = "SumTBpro"
 Option Explicit
 Public Sub Sumpro(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
@@ -50,9 +51,9 @@ Public Sub Sumpro(control As IRibbonControl)
                 End If
             End If
         Next r
-        ' THAY –?I ? –¬Y - L‡m trÚn theo quy t?c chu?n
+        ' THAY √ê?I ? √ê√ÇY - L√†m tr√≤n theo quy t?c chu?n
         For c = 1 To 6
-            resultArr(i - 1, c) = Round(sumArr(c), 0)  ' L‡m trÚn chu?n qu?c t?
+            resultArr(i - 1, c) = Round(sumArr(c), 0)  ' L√†m tr√≤n chu?n qu?c t?
         Next c
     Next i
     wsTB.Range("D2").Resize(UBound(resultArr), 6).Value = resultArr
@@ -83,6 +84,6 @@ Public Sub Sumpro(control As IRibbonControl)
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    MsgBox "Done", vbInformation
+    InfoToast "Done"
 End Sub
 

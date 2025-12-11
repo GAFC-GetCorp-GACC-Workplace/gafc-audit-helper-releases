@@ -1,6 +1,7 @@
 Attribute VB_Name = "chuyen_CF"
 Option Explicit
 Public Sub Chuyencf(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
 '
 ' chuyen_CF Macro
 '

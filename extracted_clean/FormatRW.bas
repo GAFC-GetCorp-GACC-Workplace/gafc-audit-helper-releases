@@ -1,15 +1,16 @@
 Attribute VB_Name = "FormatRW"
 Option Explicit
 Public Sub taorw(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     On Error Resume Next
     Application.DisplayAlerts = False
-    Worksheets("R W").Delete ' Xóa n?u có s?n
+    Worksheets("R W").Delete ' XÃ³a n?u cÃ³ s?n
     Application.DisplayAlerts = True
     On Error GoTo 0
     Set ws = ActiveWorkbook.Sheets.Add
     ws.Name = "R W"
-    ' G?p dòng tiêu d?
+    ' G?p dÃ²ng tiÃªu d?
     ws.Range("A1:G1").Merge
     ws.Range("A1").Value = "Th" & ChrW(244) & "ng tin s" & ChrW(7843) & "n ph" & ChrW(7849) & "m"
     ws.Range("H1:I1").Merge
@@ -20,7 +21,7 @@ Public Sub taorw(control As IRibbonControl)
     ws.Range("L1").Value = "Xu" & ChrW(7845) & "t kho"
     ws.Range("N1:O1").Merge
     ws.Range("N1").Value = "H" & ChrW(224) & "ng t" & ChrW(7891) & "n kho"
-    ' Dòng 2
+    ' DÃ²ng 2
     Dim headers As Variant
     headers = Array( _
     "T" & ChrW(234) & "n kho", _
@@ -43,19 +44,19 @@ Public Sub taorw(control As IRibbonControl)
     For i = 0 To UBound(headers)
         ws.Cells(2, i + 1).Value = headers(i)
     Next i
-    ' Can gi?a và in d?m
+    ' Can gi?a vÃ  in d?m
     With ws.Range("A1:O2")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         .WrapText = True
     End With
-    ' Tô màu tab sheet là vàng nh?t
-    ws.Tab.Color = RGB(255, 255, 153) ' Vàng nh?t
+    ' TÃ´ mÃ u tab sheet lÃ  vÃ ng nh?t
+    ws.Tab.Color = RGB(255, 255, 153) ' VÃ ng nh?t
     ' T? d?ng ch?nh d? r?ng
     ws.Columns("A:O").AutoFit
-    ' Thêm filter cho dòng 2
+    ' ThÃªm filter cho dÃ²ng 2
     ws.Range("A2:O2").AutoFilter
-    MsgBox "Done", vbInformation
+    InfoToast "Done"
 End Sub
 

@@ -1,6 +1,7 @@
 Attribute VB_Name = "Tao_checkBoxKQKD"
 Option Explicit
 Public Sub Check_box_kqkd(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     Set ws = ActiveSheet
     ' Cot bat dau va cac cot su dung
@@ -14,23 +15,23 @@ Public Sub Check_box_kqkd(control As IRibbonControl)
     ' Danh sach cong viec
     Dim checklist As Variant
     checklist = Array( _
-        "Doanh thu kh" & ChrW(7899) & "p b·o c·o thu" & ChrW(7871) & " hay khÙng", _
-        "Doanh thu cÛ kh" & ChrW(7899) & "p b·o c·o theo s" & ChrW(7843) & "n l" & ChrW(432) & ChrW(7907) & "ng (n" & ChrW(7871) & "u cÛ)", _
-        "Kh" & ChrW(7899) & "p doanh thu v‡ gi· v" & ChrW(7889) & "n c" & ChrW(7911) & "a t" & ChrW(7915) & "ng cÙng trÏnh hay khÙng (n" & ChrW(7871) & "u cÛ H" & ChrW(272) & "XD)", _
-        "Ki" & ChrW(7875) & "m tra quy trÏnh ghi nh" & ChrW(7853) & "n doanh thu: h" & ChrW(7907) & "p " & ChrW(273) & ChrW(7891) & "ng, hÛa " & ChrW(273) & "on, biÍn b" & ChrW(7843) & "n nghi" & ChrW(7879) & "m thu, giao h‡ng", _
-        ChrW(272) & ChrW(7889) & "i v" & ChrW(7899) & "i ho" & ChrW(7841) & "t " & ChrW(273) & ChrW(7897) & "ng xu" & ChrW(7845) & "t kh" & ChrW(7849) & "u cÛ t" & ChrW(7901) & " khai h" & ChrW(7843) & "i quan, h" & ChrW(7907) & "p " & ChrW(273) & ChrW(7891) & "ng, commercial invoice, Bill of lading, xx", _
-        "Ki" & ChrW(7875) & "m tra ng‡y trÍn t" & ChrW(7901) & " khai h" & ChrW(7843) & "i quan ph" & ChrW(7847) & "n " & ChrW(273) & "„ ho‡n t" & ChrW(7845) & "t", _
+        "Doanh thu kh" & ChrW(7899) & "p b√°o c√°o thu" & ChrW(7871) & " hay kh√¥ng", _
+        "Doanh thu c√≥ kh" & ChrW(7899) & "p b√°o c√°o theo s" & ChrW(7843) & "n l" & ChrW(432) & ChrW(7907) & "ng (n" & ChrW(7871) & "u c√≥)", _
+        "Kh" & ChrW(7899) & "p doanh thu v√† gi√° v" & ChrW(7889) & "n c" & ChrW(7911) & "a t" & ChrW(7915) & "ng c√¥ng tr√¨nh hay kh√¥ng (n" & ChrW(7871) & "u c√≥ H" & ChrW(272) & "XD)", _
+        "Ki" & ChrW(7875) & "m tra quy tr√¨nh ghi nh" & ChrW(7853) & "n doanh thu: h" & ChrW(7907) & "p " & ChrW(273) & ChrW(7891) & "ng, h√≥a " & ChrW(273) & "on, bi√™n b" & ChrW(7843) & "n nghi" & ChrW(7879) & "m thu, giao h√†ng", _
+        ChrW(272) & ChrW(7889) & "i v" & ChrW(7899) & "i ho" & ChrW(7841) & "t " & ChrW(273) & ChrW(7897) & "ng xu" & ChrW(7845) & "t kh" & ChrW(7849) & "u c√≥ t" & ChrW(7901) & " khai h" & ChrW(7843) & "i quan, h" & ChrW(7907) & "p " & ChrW(273) & ChrW(7891) & "ng, commercial invoice, Bill of lading, xx", _
+        "Ki" & ChrW(7875) & "m tra ng√†y tr√™n t" & ChrW(7901) & " khai h" & ChrW(7843) & "i quan ph" & ChrW(7847) & "n " & ChrW(273) & "√£ ho√†n t" & ChrW(7845) & "t", _
         "Ki" & ChrW(7875) & "m tra cut off", _
         "Thu th" & ChrW(7853) & "p b" & ChrW(7897) & " ch" & ChrW(7913) & "ng t" & ChrW(7915), _
-        "Ph‚n tÌch doanh thu v‡ l" & ChrW(227) & "i g" & ChrW(7897) & "p v‡ gi" & ChrW(7843) & "i thÌch vÏ sao cÛ bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng (Note " & ChrW(7903) & " gi· v" & ChrW(7889) & "n nam nay)", _
-        "CÛ ki" & ChrW(7875) & "m tra b" & ChrW(7843) & "ng tÌnh gi· th‡nh? Ph" & ChrW(432) & ChrW(417) & "ng ph·p tÌnh l‡ gÏ (Note " & ChrW(7903) & " gi· v" & ChrW(7889) & "n nam nay)", _
-        "Gi· v" & ChrW(7889) & "n cÛ kh" & ChrW(7899) & "p v" & ChrW(7899) & "i b" & ChrW(7843) & "ng nh" & ChrW(7853) & "p xu" & ChrW(7845) & "t t" & ChrW(7891) & "n th‡nh ph" & ChrW(7849) & "m / h‡ng hÛa?", _
-        "Ki" & ChrW(7875) & "m tra doanh thu v‡ gi· v" & ChrW(7889) & "n cÛ matching khÙng", _
-        ChrW(272) & "„ tÌnh to·n l" & ChrW(7841) & "i gi· v" & ChrW(7889) & "n ch" & ChrW(432) & "a", _
-        "Ph‚n tÌch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng doanh thu ch" & ChrW(432) & "a", _
-        "Ph‚n tÌch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng gi· v" & ChrW(7889) & "n ch" & ChrW(432) & "a", _
-"Ph‚n tÌch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng chi phÌ b·n h‡ng ch" & ChrW(432) & "a", _
-        "Ph‚n tÌch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng chi phÌ qu" & ChrW(7843) & "n l˝ ch" & ChrW(432) & "a" _
+        "Ph√¢n t√≠ch doanh thu v√† l" & ChrW(227) & "i g" & ChrW(7897) & "p v√† gi" & ChrW(7843) & "i th√≠ch v√¨ sao c√≥ bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng (Note " & ChrW(7903) & " gi√° v" & ChrW(7889) & "n nam nay)", _
+        "C√≥ ki" & ChrW(7875) & "m tra b" & ChrW(7843) & "ng t√≠nh gi√° th√†nh? Ph" & ChrW(432) & ChrW(417) & "ng ph√°p t√≠nh l√† g√¨ (Note " & ChrW(7903) & " gi√° v" & ChrW(7889) & "n nam nay)", _
+        "Gi√° v" & ChrW(7889) & "n c√≥ kh" & ChrW(7899) & "p v" & ChrW(7899) & "i b" & ChrW(7843) & "ng nh" & ChrW(7853) & "p xu" & ChrW(7845) & "t t" & ChrW(7891) & "n th√†nh ph" & ChrW(7849) & "m / h√†ng h√≥a?", _
+        "Ki" & ChrW(7875) & "m tra doanh thu v√† gi√° v" & ChrW(7889) & "n c√≥ matching kh√¥ng", _
+        ChrW(272) & "√£ t√≠nh to√°n l" & ChrW(7841) & "i gi√° v" & ChrW(7889) & "n ch" & ChrW(432) & "a", _
+        "Ph√¢n t√≠ch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng doanh thu ch" & ChrW(432) & "a", _
+        "Ph√¢n t√≠ch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng gi√° v" & ChrW(7889) & "n ch" & ChrW(432) & "a", _
+"Ph√¢n t√≠ch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng chi ph√≠ b√°n h√†ng ch" & ChrW(432) & "a", _
+        "Ph√¢n t√≠ch bi" & ChrW(7871) & "n " & ChrW(273) & ChrW(7897) & "ng chi ph√≠ qu" & ChrW(7843) & "n l√Ω ch" & ChrW(432) & "a" _
     )
     Dim n As Long: n = UBound(checklist) + 1
     Dim lastRow As Long: lastRow = rowStart + n
@@ -51,9 +52,9 @@ Public Sub Check_box_kqkd(control As IRibbonControl)
     ' Tieu de
     With ws
         .Cells(rowStart, colJ).Value = "STT"
-        .Cells(rowStart, colK).Value = "C‘NG VI" & ChrW(7878) & "C"
+        .Cells(rowStart, colK).Value = "C√îNG VI" & ChrW(7878) & "C"
         .Cells(rowStart, colL).Value = "CHECK"
-        .Cells(rowStart, colM).Value = "HO¿N TH¿NH"
+        .Cells(rowStart, colM).Value = "HO√ÄN TH√ÄNH"
         .Cells(rowStart, colN).Value = "NOTE"
         .Range(.Cells(rowStart, colJ), .Cells(rowStart, colN)).Font.Bold = True
         .Range(.Cells(rowStart, colJ), .Cells(rowStart, colN)).HorizontalAlignment = xlCenter
@@ -84,7 +85,7 @@ Public Sub Check_box_kqkd(control As IRibbonControl)
     ' Them dong nhac nho phia duoi cung (khong phai checklist)
     Dim reminderRow As Long: reminderRow = lastRow + 2
     With ws.Cells(reminderRow, colK)
-        .Value = "L" & ChrW(432) & "u ˝: C·c ph" & ChrW(7847) & "n c" & ChrW(7847) & "n ph‚n tÌch cÛ th" & ChrW(7875) & " ghi chi ti" & ChrW(7871) & "t v‡o c" & ChrW(7897) & "t Note k" & ChrW(7871) & " bÍn, ho" & ChrW(7863) & "c ghi ch˙ chi ti" & ChrW(7871) & "t v‡o ph" & ChrW(7847) & "n TMBCTC"
+        .Value = "L" & ChrW(432) & "u √Ω: C√°c ph" & ChrW(7847) & "n c" & ChrW(7847) & "n ph√¢n t√≠ch c√≥ th" & ChrW(7875) & " ghi chi ti" & ChrW(7871) & "t v√†o c" & ChrW(7897) & "t Note k" & ChrW(7871) & " b√™n, ho" & ChrW(7863) & "c ghi ch√∫ chi ti" & ChrW(7871) & "t v√†o ph" & ChrW(7847) & "n TMBCTC"
         .Font.Italic = True
         .Font.Color = RGB(0, 112, 192)
 .WrapText = True
@@ -99,6 +100,6 @@ Public Sub Check_box_kqkd(control As IRibbonControl)
     ws.Columns(colN).ColumnWidth = 30
     Application.EnableEvents = True
     Application.ScreenUpdating = True
-    MsgBox "Done", vbInformation
+    InfoToast "Done"
 End Sub
 

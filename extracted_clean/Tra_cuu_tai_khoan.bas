@@ -1,6 +1,7 @@
 Attribute VB_Name = "Tra_cuu_tai_khoan"
 Option Explicit
 Public Sub Tracode(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     Dim dict As Object
     Dim lastRow As Long, i As Long

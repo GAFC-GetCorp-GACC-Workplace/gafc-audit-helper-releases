@@ -18,6 +18,9 @@ Private Const EXPIRY_WARNING_DAYS As Double = 7   ' warn if expires within 7 day
 Private Const GRACE_DAYS As Double = 7            ' offline grace after last successful check
 Private Const DEV_ALLOW_BYPASS As Boolean = True  ' set False khi build release
 
+Public gLicenseOk As Boolean
+Public gLicenseReason As String
+
 Private Type LicenseState
     licenseKey As String
     lastValidAt As Date
@@ -29,6 +32,30 @@ Private Type LicenseState
 End Type
 
 ' ===== Public entry points =====
+
+Public Function InitLicenseStateOnOpen(Optional ByVal forceOnline As Boolean = True) As Boolean
+    gLicenseReason = ""
+    gLicenseOk = ValidateLicenseAudit(forceOnline)
+    If Not gLicenseOk Then gLicenseReason = GetLastReason()
+    InitLicenseStateOnOpen = gLicenseOk
+End Function
+
+Public Function LicenseGate(Optional ByVal showMessage As Boolean = True) As Boolean
+    If gLicenseOk Then
+        LicenseGate = True
+        Exit Function
+    End If
+
+    If showMessage Then
+        Dim msg As String
+        msg = "License hết hạn hoặc chưa kích hoạt."
+        If Len(Trim$(gLicenseReason)) > 0 Then
+            msg = msg & vbCrLf & "Lý do: " & gLicenseReason
+        End If
+        msg = msg & vbCrLf & "Liên hệ để gia hạn/nhập lại key."
+        MsgBox msg, vbExclamation, "License Required"
+    End If
+End Function
 
 Public Function ActivateLicenseAudit(ByVal licenseKey As String, Optional ByRef errorMessage As String) As Boolean
     Dim hw As Object
@@ -87,6 +114,8 @@ Public Function ActivateLicenseAudit(ByVal licenseKey As String, Optional ByRef 
     If Len(expStr) > 0 Then st.expiresAt = SafeParseDate(expStr)
     SaveState st
 
+    gLicenseOk = True
+    gLicenseReason = ""
     ActivateLicenseAudit = True
 End Function
 

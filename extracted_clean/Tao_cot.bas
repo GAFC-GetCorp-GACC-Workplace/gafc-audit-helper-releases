@@ -1,6 +1,28 @@
 Attribute VB_Name = "Tao_cot"
 Option Explicit
+
+' Show dialog to choose between Raw or Template
+Public Sub Tao_NKC_Chon(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
+    ' Show UserForm to let user choose
+    frmCreateNKC.SelectedMode = ""
+    frmCreateNKC.Show
+
+    ' Check what user selected
+    If frmCreateNKC.SelectedMode = "raw" Then
+        ' Create Raw workbook
+        Tao_NKC Nothing
+    ElseIf frmCreateNKC.SelectedMode = "template" Then
+        ' Create Template workbook
+        Tao_Template_NKC_TB Nothing
+    End If
+
+    ' Unload form
+    Unload frmCreateNKC
+End Sub
+
 Public Sub Tao_TH(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wb As Workbook
     Dim wsAfter As Worksheet
     Dim wsTH As Worksheet
@@ -17,6 +39,7 @@ Public Sub Tao_TH(control As IRibbonControl)
     Set wsTH = Tao_TH_Template(wb, wsAfter)
 End Sub
 Public Sub Tao_NKC(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wb As Workbook
     Dim wsNKC As Worksheet, wsTB As Worksheet
     Set wb = Workbooks.Add
@@ -62,6 +85,106 @@ Public Sub Tao_NKC(control As IRibbonControl)
     wsNKC.Activate
     ' silent
 End Sub
+
+' Create processed template (NKC + TB) for manual data entry
+Public Sub Tao_Template_NKC_TB(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
+    Dim wsNKC As Worksheet, wsTB As Worksheet
+
+    ' Create new workbook
+    Set wb = Workbooks.Add
+    Application.ScreenUpdating = False
+
+    ' Create NKC sheet (processed format)
+    Set wsNKC = wb.Sheets(1)
+    With wsNKC
+        .Name = "NKC"
+        ' Header row
+        .Cells(2, 1).Value = "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n"
+        .Cells(2, 2).Value = "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915)
+        .Cells(2, 3).Value = "Th" & ChrW(225) & "ng"
+        .Cells(2, 4).Value = "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n"
+        .Cells(2, 5).Value = "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i"
+        .Cells(2, 6).Value = "N" & ChrW(7907)
+        .Cells(2, 7).Value = "C" & ChrW(243)
+        .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
+        .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
+        .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
+
+        ' Format header
+        .Range("A2:J2").Font.Bold = True
+        .Range("A2:J2").Interior.Color = RGB(220, 230, 241)
+        .Range("A2:J2").AutoFilter
+        .Columns("A:J").AutoFit
+        ' Nút xóa lọc nhanh ở H1
+        ' Xoa button cu (neu co) va tao button Xoa loc gon trong cot H
+        Dim btn As Button, b As Button
+        For Each b In .Buttons
+            If b.Top >= .Cells(1, 8).Top - 0.5 And b.Top < .Cells(2, 8).Top Then
+                b.Delete
+            End If
+        Next b
+        Set btn = .Buttons.Add(0, 0, 10, 10)
+        With btn
+            .Name = "btnClearFilter_NKC"
+            .Caption = "X" & ChrW(243) & "a l" & ChrW(7885) & "c"
+            .OnAction = "Clear_NKC_Filter"
+            .Placement = xlMoveAndSize
+            .Top = .Parent.Cells(1, 8).Top + 1
+            .Left = .Parent.Cells(1, 8).Left + 1
+            .Width = .Parent.Cells(1, 8).Width - 2
+            .Height = .Parent.Rows(1).Height - 2
+            .Characters.Font.Size = 9
+        End With
+    End With
+
+    ' Create TB sheet
+    Set wsTB = wb.Sheets.Add(After:=wsNKC)
+    With wsTB
+        .Name = "TB"
+        ' Period headers
+        .Cells(2, 5).Value = ChrW(272) & ChrW(7847) & "u k" & ChrW(7923)
+        .Cells(2, 7).Value = "Ph" & ChrW(225) & "t sinh"
+        .Cells(2, 9).Value = "Cu" & ChrW(7889) & "i k" & ChrW(7923)
+        .Cells(2, 5).Font.Bold = True
+        .Cells(2, 7).Font.Bold = True
+        .Cells(2, 9).Font.Bold = True
+
+        ' Column headers
+        .Cells(3, 1).Value = "Ph" & ChrW(226) & "n c" & ChrW(244) & "ng"
+        .Cells(3, 2).Value = "C" & ChrW(7845) & "p TK"
+        .Cells(3, 3).Value = "TK'"
+        .Cells(3, 4).Value = "T" & ChrW(234) & "n TK"
+        .Cells(3, 5).Value = "N" & ChrW(7907)
+        .Cells(3, 6).Value = "C" & ChrW(243)
+        .Cells(3, 7).Value = "N" & ChrW(7907)
+        .Cells(3, 8).Value = "C" & ChrW(243)
+        .Cells(3, 9).Value = "N" & ChrW(7907)
+        .Cells(3, 10).Value = "C" & ChrW(243)
+
+        ' Format header
+        .Range("A3:J3").Font.Bold = True
+        .Range("A3:J3").Interior.Color = RGB(220, 230, 241)
+        .Range("A3:J3").AutoFilter
+
+        ' Column widths
+        .Columns("A:A").ColumnWidth = 12
+        .Columns("B:B").ColumnWidth = 8
+        .Columns("C:C").ColumnWidth = 18
+        .Columns("D:D").ColumnWidth = 35
+        .Columns("E:J").ColumnWidth = 15
+
+        ' Freeze panes
+        .Rows(4).Select
+        ActiveWindow.FreezePanes = True
+        .Cells(4, 1).Select
+    End With
+
+    wsNKC.Activate
+    Application.ScreenUpdating = True
+    
+End Sub
 Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Worksheet
     Dim ws As Worksheet
     Dim r As Long
@@ -85,9 +208,13 @@ Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Work
         .Columns("E:E").ColumnWidth = 11
         .Columns("G:H").ColumnWidth = 2
         .Columns("I:K").ColumnWidth = 16
-        ' Header khu tham so
+        ' Header khu tham so (bo cuc gon, de doc)
         .Range("B1:D4").Borders.LineStyle = xlContinuous
         .Range("B1:D4").Borders.Weight = xlThin
+        .Range("B1:D4").Interior.Color = RGB(255, 255, 235)
+        .Range("B1:C1").Merge
+        .Range("B2:C2").Merge
+        .Range("B3:C3").UnMerge
         ' O nhap tien to TK (B4) - de nguoi dung de y hon
         .Range("B4").NumberFormat = "@"
         .Range("B4").Interior.Color = RGB(255, 255, 204)
@@ -99,14 +226,18 @@ Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Work
             .InputTitle = "Nh" & ChrW(7853) & "p TK g" & ChrW(7889) & "c"
             .InputMessage = "Nh" & ChrW(7853) & "p ti" & ChrW(7873) & "n t" & ChrW(7889) & " TK (vd 112), D3 c" & ChrW(7845) & "p TK " & ChrW(273) & "t" & ChrW(7889) & "i " & ChrW(432) & "ng."
         End With
-        .Range("B3").Value = "TK g" & ChrW(7889) & "c"
-        .Range("B3").Font.Bold = True
-        .Range("C1").Value = "T" & ChrW(225) & "ch s" & ChrW(7889) & " " & ChrW(226) & "m ri" & ChrW(234) & "ng"
+        .Range("B1").Value = "T" & ChrW(225) & "ch s" & ChrW(7889) & " " & ChrW(226) & "m ri" & ChrW(234) & "ng"
         .Range("D1").Value = True
-        .Range("C1:D1").Interior.Color = RGB(255, 255, 153)
+        .Range("C1:D1").Interior.Color = RGB(255, 240, 150)
         .Range("C1:D1").Font.Bold = True
-        .Range("C2").Value = "Th" & ChrW(225) & "ng"
-        .Range("C3").Value = ChrW(272) & ChrW(7889) & "i " & ChrW(7913) & "ng"
+        .Range("B2").Value = "Th" & ChrW(225) & "ng"
+        .Range("B3").Value = "TK g" & ChrW(7889) & "c"
+        .Range("C3").Value = "C" & ChrW(7845) & "p " & ChrW(273) & ChrW(7889) & "i " & ChrW(7913) & "ng"
+        .Range("B3").Font.Bold = True
+        .Range("C3").Font.Bold = True
+        .Range("C2:D2").Interior.Color = RGB(255, 255, 204)
+        .Range("C2:D2").Font.Bold = True
+        .Range("D2").NumberFormat = "0"
         .Range("D3").Value = 4
         .Range("C2:D3").Interior.Color = RGB(255, 255, 204)
         .Range("C2:D3").Font.Bold = True
@@ -114,6 +245,31 @@ Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Work
         .Range("C4").Value = "" ' Tai khoan nhap tay
         .Range("C4").Interior.Color = RGB(255, 255, 0)
         .Range("C4").Font.Bold = True
+        ' Validation dropdowns
+        With .Range("D1").Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertInformation, Formula1:="TRUE,FALSE"
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
+        With .Range("D4").Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertInformation, Formula1:="TRUE,FALSE"
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
+        With .Range("D2").Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertInformation, Formula1:="1,2,3,4,5,6,7,8,9,10,11,12"
+            .IgnoreBlank = True
+            .InCellDropdown = True
+        End With
+        .Range("E4").Value = "R" & ChrW(250) & "t g" & ChrW(7885) & "n"
+        .Range("E4").Font.Bold = True
+        .Range("E4").Interior.Color = RGB(232, 240, 255)
+        ' Default toggles
+        .Range("D1").Value = True
+        .Range("D4").Value = True
         ' Khu tong hop - chi tao SDDK, SPS/SDCK se duoc Auto_Tinh_TH tu dong tao
         .Range("A5").Value = "SDDK"
         .Range("A5").Font.Color = RGB(0, 0, 200)

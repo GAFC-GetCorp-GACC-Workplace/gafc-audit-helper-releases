@@ -6,6 +6,11 @@ Option Explicit
 
 Private Const MANIFEST_URL As String = "https://raw.githubusercontent.com/muaroi2002/gafc-audit-helper-releases/main/releases/audit_tool.json"
 Private Const UPDATE_CHECK_INTERVAL_DAYS As Double = 1  ' Check daily
+Private Const REG_APP As String = "GAFCAuditHelper"
+Private Const REG_SECTION As String = "AutoUpdate"
+Private Const REG_PENDING_PATH As String = "PendingPath"
+Private Const REG_PENDING_VERSION As String = "PendingVersion"
+Private isForceCheck As Boolean
 
 ' Type must be declared at module level, before any procedures
 Private Type UpdateState
@@ -15,20 +20,13 @@ End Type
 
 ' Get version from XLAM custom properties (set during build)
 Private Function CURRENT_VERSION() As String
-    On Error Resume Next
-    Dim wb As Workbook
-    Set wb = ThisWorkbook
-    CURRENT_VERSION = wb.CustomDocumentProperties("Version").Value
-
-    ' Fallback if property not set
-    If Err.Number <> 0 Or Len(CURRENT_VERSION) = 0 Then
-        CURRENT_VERSION = "1.0.9"  ' Default fallback
-    End If
-    On Error GoTo 0
+    ' Always return hardcoded version since CustomDocumentProperties may be outdated
+    CURRENT_VERSION = "1.0.10"
 End Function
 
 ' Main entry point - call from Workbook_Open
 Public Sub CheckForUpdates(Optional ByVal forceCheck As Boolean = False)
+    isForceCheck = forceCheck
     On Error Resume Next
     Dim state As UpdateState, latestVersion As String, downloadUrl As String, releaseNotes As String
 
@@ -46,10 +44,17 @@ Public Sub CheckForUpdates(Optional ByVal forceCheck As Boolean = False)
         SaveUpdateState state
 
         ' Compare versions
-        If CompareVersions(latestVersion, CURRENT_VERSION) > 0 Then
+        Dim cmp As Integer
+        cmp = CompareVersions(latestVersion, CURRENT_VERSION)
+
+        If cmp > 0 Then
             ' New version available - auto update without prompting
             AutoUpdate latestVersion, releaseNotes, downloadUrl
+        Else
+            InfoToast "You are on the latest version."
         End If
+    Else
+        InfoToast "Could not check for updates."
     End If
 End Sub
 
@@ -149,7 +154,7 @@ Private Sub AutoUpdate(ByVal newVersion As String, _
                        ByVal releaseNotes As String, _
                        ByVal downloadUrl As String)
     ' Show brief notification on status bar (ASCII-safe)
-    Application.StatusBar = "Updating to version " & newVersion & "..."
+    Application.StatusBar = "Downloading update " & newVersion & "..."
 
     ' Download and install update silently
     DownloadAndInstall downloadUrl, newVersion
@@ -162,42 +167,39 @@ Private Sub DownloadAndInstall(ByVal downloadUrl As String, ByVal newVersion As 
     ' Download update script from GitHub to temp folder
     Dim tempFolder As String, scriptPath As String
     tempFolder = Environ("TEMP")
-    scriptPath = tempFolder & "\gafc_update_" & newVersion & ".ps1"
+    scriptPath = tempFolder & "\gafc_update_" & newVersion & ".xlam"
 
-    ' PowerShell script content (embedded)
-    Dim scriptContent As String
-    scriptContent = "# GAFC Audit Helper Auto-Update Script" & vbCrLf & _
-                   "$xlam = '" & downloadUrl & "'" & vbCrLf & _
-                   "$dest = Join-Path $env:APPDATA 'Microsoft\Excel\XLSTART\gafc_audit_helper.xlam'" & vbCrLf & _
-                   "Start-Sleep -Seconds 3" & vbCrLf & _
-                   "try {" & vbCrLf & _
-                   "    Invoke-WebRequest -Uri $xlam -OutFile $dest -UseBasicParsing" & vbCrLf & _
-                   "    Write-Host 'Update completed successfully'" & vbCrLf & _
-                   "} catch {" & vbCrLf & _
-                   "    Write-Host 'Update failed:' $_.Exception.Message" & vbCrLf & _
-                   "}" & vbCrLf & _
-                   "Remove-Item $PSCommandPath -Force"
+    ' Download new XLAM to temp; apply sẽ đợi đến khi user đóng Excel
+    Dim http As Object
+    Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    If http Is Nothing Then Set http = CreateObject("MSXML2.XMLHTTP")
+    If http Is Nothing Then GoTo ErrorHandler
 
-    ' Write script to temp file
-    Dim fso As Object, ts As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Set ts = fso.CreateTextFile(scriptPath, True)
-    ts.Write scriptContent
-    ts.Close
+    http.Open "GET", downloadUrl, False
+    http.setRequestHeader "Cache-Control", "no-cache"
+    http.Send
+    If http.status <> 200 Then GoTo ErrorHandler
 
-    ' Run PowerShell update script in background
-    Dim cmd As String
-    cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & scriptPath & """"
-    shell cmd, vbHide
+    Dim stream As Object
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1 'binary
+    stream.Open
+    stream.Write http.responseBody
+    stream.SaveToFile scriptPath, 2 'overwrite
+    stream.Close
 
-    ' Close Excel to allow update (after brief delay)
-    Application.OnTime Now + TimeValue("00:00:02"), "CloseExcelForUpdate"
+    ' Lưu pending để áp dụng khi Excel thật sự tắt
+    SetPendingUpdate scriptPath, newVersion
+    Application.StatusBar = "Update downloaded (" & newVersion & "). Will apply after you close Excel."
+    If isForceCheck Then
+        InfoToast "Update ready. Please save work and close Excel to apply."
+    End If
 
     Exit Sub
 
 ErrorHandler:
-    MsgBox "Update error: " & Err.Description & vbCrLf & vbCrLf & _
-           "Please download manually from GitHub.", vbExclamation
+    ' Im lặng theo yêu cầu, chỉ reset status bar
+    Application.StatusBar = False
 End Sub
 
 ' Load update state from Registry
@@ -230,11 +232,52 @@ Public Function GetCurrentVersion() As String
     GetCurrentVersion = CURRENT_VERSION
 End Function
 
-' Close Excel for update (called by OnTime)
-Public Sub CloseExcelForUpdate()
+Public Sub ApplyPendingUpdateIfNeeded()
     On Error Resume Next
-    Application.DisplayAlerts = False
-    Application.Quit
+    Dim pendingPath As String
+    pendingPath = GetSetting(REG_APP, REG_SECTION, REG_PENDING_PATH, "")
+    If Len(Trim$(pendingPath)) = 0 Then Exit Sub
+    If Dir$(pendingPath, vbNormal) = "" Then
+        ClearPendingUpdate
+        Exit Sub
+    End If
+
+    Dim dest As String
+    dest = Environ("APPDATA") & "\Microsoft\Excel\XLSTART\gafc_audit_helper.xlam"
+
+    ' Tạo script chờ Excel tắt rồi copy
+    Dim tempScript As String
+    tempScript = Environ("TEMP") & "\gafc_apply_update.ps1"
+    Dim ps As String
+    ps = "$src='" & Replace(pendingPath, "'", "''") & "';" & vbCrLf & _
+         "$dest='" & Replace(dest, "'", "''") & "';" & vbCrLf & _
+         "while(Get-Process excel -ErrorAction SilentlyContinue){Start-Sleep -Milliseconds 500};" & vbCrLf & _
+         "try { Copy-Item -Path $src -Destination $dest -Force } catch {};" & vbCrLf & _
+         "Remove-Item -Path $src -Force -ErrorAction SilentlyContinue;" & vbCrLf & _
+         "Remove-ItemProperty -Path 'HKCU:\\Software\\VB and VBA Program Settings\\" & REG_APP & "\\" & REG_SECTION & "' -Name '" & REG_PENDING_PATH & "' -ErrorAction SilentlyContinue;" & vbCrLf & _
+         "Remove-ItemProperty -Path 'HKCU:\\Software\\VB and VBA Program Settings\\" & REG_APP & "\\" & REG_SECTION & "' -Name '" & REG_PENDING_VERSION & "' -ErrorAction SilentlyContinue;"
+
+    Dim fso As Object, ts As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.CreateTextFile(tempScript, True)
+    ts.Write ps
+    ts.Close
+
+    Dim cmd As String
+    cmd = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & tempScript & """"
+    CreateObject("WScript.Shell").Run cmd, 0, False
+End Sub
+
+Private Sub SetPendingUpdate(ByVal path As String, ByVal version As String)
+    On Error Resume Next
+    SaveSetting REG_APP, REG_SECTION, REG_PENDING_PATH, path
+    SaveSetting REG_APP, REG_SECTION, REG_PENDING_VERSION, version
+End Sub
+
+Private Sub ClearPendingUpdate()
+    On Error Resume Next
+    SaveSetting REG_APP, REG_SECTION, REG_PENDING_PATH, ""
+    SaveSetting REG_APP, REG_SECTION, REG_PENDING_VERSION, ""
 End Sub
 
 

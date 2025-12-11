@@ -1,6 +1,7 @@
 Attribute VB_Name = "FormatDetail"
 Option Explicit
 Public Sub taodetail(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     On Error Resume Next
     Application.DisplayAlerts = False
@@ -9,7 +10,7 @@ Public Sub taodetail(control As IRibbonControl)
     On Error GoTo 0
     Set ws = ActiveWorkbook.Sheets.Add
     ws.Name = "D550.1.1 Detail Input"
-    ' G?p dÚng 1
+    ' G?p d√≤ng 1
     ws.Range("A1:I1").Merge
     ws.Range("A1").Value = "Ch" & ChrW(7913) & "ng t" & ChrW(7915)
     ws.Range("J1:M1").Merge
@@ -23,7 +24,7 @@ Public Sub taodetail(control As IRibbonControl)
     ws.Range("T1:U1").Merge
     ws.Range("T1").Value = "H" & ChrW(224) & "ng t" & ChrW(7891) & "n kho"
     ws.Range("V1").Value = "Gi" & ChrW(225) & " trung b" & ChrW(236) & "nh"
-    ' DÚng 2
+    ' D√≤ng 2
     Dim headers As Variant
 headers = Array( _
     "S" & ChrW(7889) & " ch" & ChrW(7913) & "ng t" & ChrW(7915), _
@@ -58,17 +59,17 @@ headers = Array( _
     End With
     ' Filter
     ws.Range("A2:V2").AutoFilter
-    ' T? d?ng co gi„n c?t
+    ' T? d?ng co gi√£n c?t
     ws.Columns("A:V").AutoFit
-    ' TÙ m‡u tab sheet = xanh nu?c bi?n nh?t
+    ' T√¥ m√†u tab sheet = xanh nu?c bi?n nh?t
     ws.Tab.Color = RGB(173, 216, 230) ' LightBlue
     With ws
     .Columns("A").Interior.Color = RGB(255, 230, 200) ' S? CT
-    .Columns("C").Interior.Color = RGB(200, 255, 255) ' Ng‡y
-    .Columns("D").Interior.Color = RGB(200, 230, 255) ' M„ h‡ng
+    .Columns("C").Interior.Color = RGB(200, 255, 255) ' Ng√†y
+    .Columns("D").Interior.Color = RGB(200, 230, 255) ' M√£ h√†ng
     .Columns("P").Interior.Color = RGB(255, 255, 200) ' S? lu?ng
-    .Columns("Q").Interior.Color = RGB(200, 255, 200) ' Gi· tr?
+    .Columns("Q").Interior.Color = RGB(200, 255, 200) ' Gi√° tr?
 End With
-    MsgBox "Done", vbInformation
+    InfoToast "Done"
 End Sub
 

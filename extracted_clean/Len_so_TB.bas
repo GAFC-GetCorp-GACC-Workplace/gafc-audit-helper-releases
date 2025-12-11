@@ -1,6 +1,7 @@
 Attribute VB_Name = "Len_so_TB"
 Option Explicit
 Public Sub Len_so_bao_cao(control As IRibbonControl)
+    If Not LicenseGate() Then Exit Sub
     Dim wb As Workbook
     Dim wsTB As Worksheet, wsFS As Worksheet
     Dim lastRowTB As Long, lastRowFS As Long
@@ -9,7 +10,7 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
     Dim val1 As Double, val2 As Double
     Dim arrFS As Variant
     Dim tempVal2 As Double
-    ' ?? L?y workbook c?a sheet dang active (tr·nh dÌnh file Add-in)
+    ' ?? L?y workbook c?a sheet dang active (tr√°nh d√≠nh file Add-in)
     Set wb = ActiveSheet.Parent
     ' ?? Ki?m tra t?n t?i 2 sheet
     On Error Resume Next
@@ -17,15 +18,15 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
     Set wsFS = wb.Sheets("Adjusted FS")
     On Error GoTo 0
     If wsTB Is Nothing Or wsFS Is Nothing Then
-        MsgBox "? KhÙng tÏm th?y sheet 'TB' ho?c 'Adjusted FS' trong file dang m?!", vbCritical, "L?i"
+        MsgBox "? Kh√¥ng t√¨m th?y sheet 'TB' ho?c 'Adjusted FS' trong file dang m?!", vbCritical, "L?i"
         Exit Sub
     End If
-    ' ?? X·c d?nh dÚng cu?i trong TB
+    ' ?? X√°c d?nh d√≤ng cu?i trong TB
     lastRowTB = wsTB.Cells(wsTB.Rows.Count, "H").End(xlUp).Row
-    lastRowFS = 250  ' ho?c cÛ th? d?t d?ng theo D c?t n?u b?n mu?n
-    ' ?? –?c to‡n b? c?t D bÍn Adjusted FS
+    lastRowFS = 250  ' ho?c c√≥ th? d?t d?ng theo D c?t n?u b?n mu?n
+    ' ?? √ê?c to√†n b? c?t D b√™n Adjusted FS
     arrFS = wsFS.Range("D1:D" & lastRowFS).Value
-    ' ?? Duy?t t?ng dÚng trong TB
+    ' ?? Duy?t t?ng d√≤ng trong TB
     For i = 2 To lastRowTB
         code1 = Trim(CStr(wsTB.Cells(i, "A").Value))
         code2 = Trim(CStr(wsTB.Cells(i, "B").Value))
@@ -47,7 +48,7 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
                 End If
             Next j
         Else
-            ' ?? CODE1: Ghi tr?c ti?p (gi? nguyÍn d?u)
+            ' ?? CODE1: Ghi tr?c ti?p (gi? nguy√™n d?u)
             If code1 <> "" Then
                 For j = 1 To UBound(arrFS, 1)
                     If Trim(CStr(arrFS(j, 1))) = code1 Then
@@ -62,7 +63,7 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
                     End If
                 Next j
             End If
-            ' ?? CODE2: M?t s? m„ s? ghi ‚m
+            ' ?? CODE2: M?t s? m√£ s? ghi √¢m
             If code2 <> "" Then
                 tempVal2 = val2
                 If code2 = "2141" Or code2 = "2142" Or code2 = "2143" Or _
@@ -84,7 +85,7 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
             End If
         End If
     Next i
-    ' ? ThÙng b·o ho‡n t?t
-    MsgBox "? –„ chuy?n d? li?u sang Adjusted FS th‡nh cÙng!", vbInformation, "Ho‡n t?t"
+    ' ? Th√¥ng b√°o ho√†n t?t
+    MsgBox "? √ê√£ chuy?n d? li?u sang Adjusted FS th√†nh c√¥ng!", vbInformation, "Ho√†n t?t"
 End Sub
 
