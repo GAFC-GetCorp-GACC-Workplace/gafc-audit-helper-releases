@@ -16,12 +16,8 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
 
     If lastRow < 3 Then Exit Sub
 
-    ' Kiem tra xem co du cot khong (can 11 cot)
-    Dim hasAllColumns As Boolean
-    hasAllColumns = True
-
-    ' Neu chua co day du 11 cot, bo sung
-    If wsNKC.Cells(2, 11).Value = "" Then hasAllColumns = False
+    ' Đảm bảo header đủ cột (thêm "Khac" và "Can review" nếu thiếu)
+    EnsureNKCHeader wsNKC, False
 
     Application.ScreenUpdating = False
 
@@ -64,7 +60,111 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
     wsNKC.Cells(1, 10).Font.Size = 11
 
     Application.ScreenUpdating = True
+
+    ' Đảm bảo nút Xóa lọc luôn có trên NKC
+    FixClearFilterButton wsNKC
 End Sub
+
+' Đảm bảo header NKC có đủ cột "Khac" và "Can review" (khi mở file cũ)
+Private Sub EnsureNKCHeader(ws As Worksheet, Optional includeReview As Boolean = False)
+    Const HDR_ROW As Long = 2
+    ' Đảm bảo cột Khac tại cột K; nếu thiếu thì thêm giá trị header.
+    ws.Cells(HDR_ROW, 11).Value = "Kh" & ChrW(225) & "c"
+
+    If includeReview Then
+        ' Sổ chưa xử lý: thêm cột review tại L
+        ws.Cells(HDR_ROW, 12).Value = "C" & ChrW(7847) & "n review"
+        With ws.Range("A2:L2")
+            .Font.Bold = True
+            .Interior.Color = RGB(220, 230, 241)
+            .AutoFilter
+        End With
+        ws.Columns("A:L").AutoFit
+    Else
+        ' Sổ đã xử lý: chỉ tới cột K
+        With ws.Range("A2:K2")
+            .Font.Bold = True
+            .Interior.Color = RGB(220, 230, 241)
+            .AutoFilter
+        End With
+        ws.Columns("A:K").AutoFit
+    End If
+
+    ' Giới hạn độ rộng cột Dien giai (E) để tránh kéo quá dài khi AutoFit
+    If ws.Columns(5).ColumnWidth > 50 Then ws.Columns(5).ColumnWidth = 50
+End Sub
+
+Private Function NormalizeHeaderText(ByVal s As String) As String
+    s = LCase$(Trim$(CStr(s)))
+    s = Replace$(s, " ", "")
+    s = Replace$(s, "á", "a")
+    s = Replace$(s, "à", "a")
+    s = Replace$(s, "ả", "a")
+    s = Replace$(s, "ã", "a")
+    s = Replace$(s, "ạ", "a")
+    s = Replace$(s, "â", "a")
+    s = Replace$(s, "ă", "a")
+    s = Replace$(s, "ấ", "a")
+    s = Replace$(s, "ầ", "a")
+    s = Replace$(s, "ẩ", "a")
+    s = Replace$(s, "ẫ", "a")
+    s = Replace$(s, "ậ", "a")
+    s = Replace$(s, "ắ", "a")
+    s = Replace$(s, "ằ", "a")
+    s = Replace$(s, "ẳ", "a")
+    s = Replace$(s, "ẵ", "a")
+    s = Replace$(s, "ặ", "a")
+    s = Replace$(s, "é", "e")
+    s = Replace$(s, "è", "e")
+    s = Replace$(s, "ẻ", "e")
+    s = Replace$(s, "ẽ", "e")
+    s = Replace$(s, "ẹ", "e")
+    s = Replace$(s, "ê", "e")
+    s = Replace$(s, "ế", "e")
+    s = Replace$(s, "ề", "e")
+    s = Replace$(s, "ể", "e")
+    s = Replace$(s, "ễ", "e")
+    s = Replace$(s, "ệ", "e")
+    s = Replace$(s, "í", "i")
+    s = Replace$(s, "ì", "i")
+    s = Replace$(s, "ỉ", "i")
+    s = Replace$(s, "ĩ", "i")
+    s = Replace$(s, "ị", "i")
+    s = Replace$(s, "ó", "o")
+    s = Replace$(s, "ò", "o")
+    s = Replace$(s, "ỏ", "o")
+    s = Replace$(s, "õ", "o")
+    s = Replace$(s, "ọ", "o")
+    s = Replace$(s, "ô", "o")
+    s = Replace$(s, "ơ", "o")
+    s = Replace$(s, "ố", "o")
+    s = Replace$(s, "ồ", "o")
+    s = Replace$(s, "ổ", "o")
+    s = Replace$(s, "ỗ", "o")
+    s = Replace$(s, "ộ", "o")
+    s = Replace$(s, "ớ", "o")
+    s = Replace$(s, "ờ", "o")
+    s = Replace$(s, "ở", "o")
+    s = Replace$(s, "ỡ", "o")
+    s = Replace$(s, "ợ", "o")
+    s = Replace$(s, "ú", "u")
+    s = Replace$(s, "ù", "u")
+    s = Replace$(s, "ủ", "u")
+    s = Replace$(s, "ũ", "u")
+    s = Replace$(s, "ụ", "u")
+    s = Replace$(s, "ư", "u")
+    s = Replace$(s, "ứ", "u")
+    s = Replace$(s, "ừ", "u")
+    s = Replace$(s, "ử", "u")
+    s = Replace$(s, "ữ", "u")
+    s = Replace$(s, "ự", "u")
+    s = Replace$(s, "ý", "y")
+    s = Replace$(s, "ỳ", "y")
+    s = Replace$(s, "ỷ", "y")
+    s = Replace$(s, "ỹ", "y")
+    s = Replace$(s, "ỵ", "y")
+    NormalizeHeaderText = s
+End Function
 
 ' Create NKC template for manual data entry
 Public Sub Tao_Template_NKC(control As IRibbonControl)
@@ -97,9 +197,8 @@ Public Sub Tao_Template_NKC(control As IRibbonControl)
         .Cells(2, 8).Value = "No TK"
         .Cells(2, 9).Value = "Co TK"
         .Cells(2, 10).Value = "So tien"
-        .Cells(2, 11).Value = "Can review"
-
-        ' Format header
+        .Cells(2, 11).Value = "Khac"
+        ' Format header (không cần cột review cho sổ đã xử lý)
         .Range("A2:K2").Font.Bold = True
         .Range("A2:K2").Interior.Color = RGB(220, 230, 241)
         .Range("A2:K2").AutoFilter
@@ -110,11 +209,14 @@ Public Sub Tao_Template_NKC(control As IRibbonControl)
         .Cells(1, 1).Font.Bold = True
         .Cells(1, 1).Font.Color = RGB(0, 112, 192)
     End With
+    ' Đảm bảo header chuẩn (Khac) sau khi tạo mới
+    EnsureNKCHeader wsTemplate, False
 
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
 
     InfoToast "NKC template created successfully! Paste data từ dòng 3."
+    FixClearFilterButton wsTemplate
 End Sub
 Public Sub Clear_NKC_Filter()
     Dim ws As Worksheet
@@ -133,20 +235,47 @@ Public Sub Clear_NKC_Filter()
     FixClearFilterButton ws
 End Sub
 Private Sub FixClearFilterButton(ws As Worksheet)
-    Dim btn As Button
+    Dim btn As Object, found As Boolean
+    Dim leftPos As Double, topPos As Double, w As Double, h As Double
+
+    leftPos = ws.Cells(1, 8).Left + 1
+    topPos = ws.Cells(1, 8).Top + 1
+    w = ws.Cells(1, 8).Width - 2
+    h = ws.Rows(1).Height - 2
+    If w < 10 Then w = 40
+    If h < 8 Then h = 14
+
     On Error Resume Next
-    For Each btn In ws.Buttons
-        If btn.Name = "btnClearFilter_NKC" Or (btn.Left >= ws.Cells(1, 8).Left - 0.5 And btn.Left < ws.Cells(1, 9).Left) Then
-            btn.Caption = "X" & ChrW(243) & "a l" & ChrW(7885) & "c"
-            btn.Placement = xlMoveAndSize
-            btn.Top = ws.Cells(1, 8).Top + 1
-            btn.Left = ws.Cells(1, 8).Left + 1
-            btn.Width = ws.Cells(1, 8).Width - 2
-            btn.Height = ws.Rows(1).Height - 2
-            btn.Characters.Font.Size = 9
-            Exit For
+    Set btn = ws.Buttons("btnClearFilter_NKC")
+    On Error GoTo 0
+
+    If btn Is Nothing Then
+        ' Thử tạo form control button
+        On Error Resume Next
+        Set btn = ws.Buttons.Add(leftPos, topPos, w, h)
+        On Error GoTo 0
+        If btn Is Nothing Then
+            ' Fallback Shapes.AddFormControl nếu Buttons.Add thất bại
+            On Error Resume Next
+            Set btn = ws.Shapes.AddFormControl(0, leftPos, topPos, w, h) ' 0 = xlButtonControl
+            On Error GoTo 0
         End If
-    Next btn
+        If btn Is Nothing Then Exit Sub
+        btn.Name = "btnClearFilter_NKC"
+    End If
+
+    With btn
+        On Error Resume Next
+        .OnAction = "Clear_NKC_Filter"
+        .Placement = xlMoveAndSize
+        .Top = topPos
+        .Left = leftPos
+        .Width = w
+        .Height = h
+        .Characters.Font.Size = 9
+        .Caption = "X" & ChrW(243) & "a l" & ChrW(7885) & "c"
+        On Error GoTo 0
+    End With
 End Sub
 Public Sub Chinh_Format_NKC_va_Pivot(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
@@ -210,6 +339,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim key As Variant, r As Variant
     Dim pivotErr As String, thMsg As String
     Dim wsNKCExists As Worksheet
+    Dim includeReview As Boolean
+    ' Mac dinh: xu ly du lieu tho -> co cot Can review
+    includeReview = True
 
     Set wb = ActiveWorkbook
 
@@ -222,6 +354,10 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         ' NKC sheet exists - skip processing, go straight to next steps
         InfoToast "Ph" & ChrW(225) & "t hi" & ChrW(7879) & "n sheet NKC " & ChrW(273) & ChrW(227) & " t" & ChrW(7891) & "n t" & ChrW(7841) & "i! " & _
                  "B" & ChrW(7887) & " qua b" & ChrW(432) & ChrW(7899) & "c x" & ChrW(7917) & " l" & ChrW(253) & ", ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c ti" & ChrW(7871) & "p theo..."
+
+        ' Đảm bảo header đủ cột Khac (không thêm review cho luồng đã xử lý)
+        EnsureNKCHeader wsNKCExists, False
+        includeReview = False
 
         ' Continue with next steps (TH, Pivot, etc.)
         GoTo SkipProcessing
@@ -268,12 +404,15 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
         .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
         .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
-        .Cells(2, 11).Value = "C" & ChrW(7847) & "n review"
-        .Range("A2:K2").Font.Bold = True
-        .Range("A2:K2").Interior.Color = RGB(220, 230, 241)
-        .Range("A2:K2").AutoFilter
-        .Columns("A:K").AutoFit
+        .Cells(2, 11).Value = "Kh" & ChrW(225) & "c"
+        .Cells(2, 12).Value = "C" & ChrW(7847) & "n review"
+        .Range("A2:L2").Font.Bold = True
+        .Range("A2:L2").Interior.Color = RGB(220, 230, 241)
+        .Range("A2:L2").AutoFilter
+        .Columns("A:L").AutoFit
     End With
+    ' Chuẩn hóa header cho luồng "chưa xử lý" (giữ Khac + review)
+    EnsureNKCHeader wsKetQua, True
     Set dictGroup = CreateObject("Scripting.Dictionary")
     ' Nhom du lieu theo MaCT|Ngay
     For i = 1 To UBound(arrData, 1)
@@ -300,7 +439,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Next key
     ' ========== XU LY VA THU THAP OUTPUT ==========
     Dim outputArr() As Variant
-    ReDim outputArr(1 To (lastRow - 1) * 10, 1 To 11)
+    Dim colCount As Long
+    colCount = IIf(includeReview, 12, 11)
+    ReDim outputArr(1 To (lastRow - 1) * 10, 1 To colCount)
     Dim dongOut As Long
     dongOut = 1
     For Each key In dictGroup.keys
@@ -350,9 +491,12 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                 tkCo = CStr(arrData(rCo, 4))
                 If Abs(tienNo - tienCo) < 0.01 And IsValidAccountPair(tkNo, tkCo) Then
                     If dongOut > UBound(outputArr, 1) Then
-                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To 11)
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                     End If
-                    ' Format mau: NgayHT, NgayCT, Thang, SoHD, DienGiai, No, Co, NoTK, CoTK, SoTien, CanReview
+                    ' Format mau: NgayHT, NgayCT, Thang, SoHD, DienGiai, No, Co, NoTK, CoTK, SoTien, Khac, CanReview
+                    Dim khacVal As Variant
+                    khacVal = arrData(rNo, 7)
+                    If Len(Trim$(khacVal)) = 0 Then khacVal = arrData(rCo, 7)
                     outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
                     outputArr(dongOut, 2) = ""               ' Ngay chung tu
                     ' Thang lay theo Ngay hach toan (cot A sheet NKC = col 2 nguon)
@@ -364,7 +508,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                     outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
                     outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
-                    outputArr(dongOut, 11) = needReview      ' CanReview
+                    outputArr(dongOut, 11) = khacVal          ' Khac (lay tu G, uu tien dong No, neu trong thi dong Co)
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
                     usedCo(idxCo) = usedCo(idxCo) + tienNo
                     dongOut = dongOut + 1
@@ -389,8 +533,11 @@ NextNoPass1:
                 If Abs(tienCo) < 0.01 Then GoTo NextCoPass2
                 If Abs(tienNo - tienCo) < 0.01 Then
                     If dongOut > UBound(outputArr, 1) Then
-                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To 11)
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                     End If
+                    Dim khacVal2 As Variant
+                    khacVal2 = arrData(rNo, 7)
+                    If Len(Trim$(khacVal2)) = 0 Then khacVal2 = arrData(rCo, 7)
                     outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
                     outputArr(dongOut, 2) = ""               ' Ngay chung tu
                     outputArr(dongOut, 3) = GetMonthValue(arrData(rNo, 2))
@@ -401,7 +548,7 @@ NextNoPass1:
                     outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
                     outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
-                    outputArr(dongOut, 11) = needReview      ' CanReview
+                    outputArr(dongOut, 11) = khacVal2        ' Khac
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
                     usedCo(idxCo) = usedCo(idxCo) + tienNo
                     dongOut = dongOut + 1
@@ -439,10 +586,13 @@ NextNoPass2:
                 rCo = entryCo(0)
                 tienPhanBo = Application.Min(Abs(tienNo), Abs(bestCo)) * Sgn(tienNo)
                 If dongOut > UBound(outputArr, 1) Then
-                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To 11)
+                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                 End If
                 tkNo = CStr(arrData(rNo, 4))
                 tkCo = CStr(arrData(rCo, 4))
+                Dim khacVal3 As Variant
+                khacVal3 = arrData(rNo, 7)
+                If Len(Trim$(khacVal3)) = 0 Then khacVal3 = arrData(rCo, 7)
                 outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
                 outputArr(dongOut, 2) = ""               ' Ngay chung tu
                 outputArr(dongOut, 3) = GetMonthValue(arrData(rNo, 2))
@@ -453,11 +603,14 @@ NextNoPass2:
                 outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
                 outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
                 outputArr(dongOut, 10) = tienPhanBo      ' So tien
-                ' Pass 3: neu cap TK hop le thi giu needReview (co the trong); neu khong hop le thi bat buoc X
-                If IsValidAccountPair(tkNo, tkCo) Then
-                    outputArr(dongOut, 11) = needReview
-                Else
-                    outputArr(dongOut, 11) = "X"
+                outputArr(dongOut, 11) = khacVal3        ' Khac
+                ' Nếu luồng chưa xử lý (includeReview=True) thì cột 12 là review
+                If includeReview Then
+                    If IsValidAccountPair(tkNo, tkCo) Then
+                        outputArr(dongOut, 12) = needReview
+                    Else
+                        outputArr(dongOut, 12) = "X"
+                    End If
                 End If
                 usedNo(idxNo) = usedNo(idxNo) + tienPhanBo
                 usedCo(bestIdx) = usedCo(bestIdx) + tienPhanBo
@@ -472,14 +625,14 @@ NextGroup:
     ' ========== GHI OUTPUT ==========
     If dongOut > 1 Then
         Dim finalOut() As Variant
-        ReDim finalOut(1 To dongOut - 1, 1 To 11)
+        ReDim finalOut(1 To dongOut - 1, 1 To colCount)
         Dim j As Long
         For i = 1 To dongOut - 1
-            For j = 1 To 11
+            For j = 1 To colCount
                 finalOut(i, j) = outputArr(i, j)
             Next j
         Next i
-        wsKetQua.Range("A3").Resize(dongOut - 1, 11).Value = finalOut
+        wsKetQua.Range("A3").Resize(dongOut - 1, colCount).Value = finalOut
         ' Tinh thang tu cot Ngay hach toan (col A) bang MONTH, sau do fix value
         Dim dataLast As Long
         dataLast = dongOut + 1 ' hang cuoi co du lieu (bat dau tu row 3)
@@ -488,13 +641,16 @@ NextGroup:
             .Range("C3:C" & dataLast).Value = .Range("C3:C" & dataLast).Value
         End With
         ' ========== TO VANG CAC DONG CAN REVIEW ==========
+        ' Tô vàng cột review (chỉ khi includeReview=True)
         Dim rng As Range
-        For i = 3 To dongOut + 1
-            If wsKetQua.Cells(i, 11).Value = "X" Then
-                Set rng = wsKetQua.Range(wsKetQua.Cells(i, 1), wsKetQua.Cells(i, 11))
-                rng.Interior.Color = RGB(255, 255, 150) ' Vang
-            End If
-        Next i
+        If includeReview Then
+            For i = 3 To dongOut + 1
+                If wsKetQua.Cells(i, 12).Value = "X" Then
+                    Set rng = wsKetQua.Range(wsKetQua.Cells(i, 1), wsKetQua.Cells(i, 12))
+                    rng.Interior.Color = RGB(255, 255, 150) ' Vang
+                End If
+            Next i
+        End If
     End If
     ' ========== FORMAT ==========
     Dim lastRowOut As Long
@@ -507,7 +663,11 @@ NextGroup:
     wsKetQua.Columns("A:B").NumberFormat = "dd/mm/yyyy"
     ' Dem so dong can review
     Dim countReview As Long
-    countReview = Application.WorksheetFunction.CountIf(wsKetQua.Columns(11), "X")
+    If includeReview Then
+        countReview = Application.WorksheetFunction.CountIf(wsKetQua.Columns(12), "X")
+    Else
+        countReview = 0
+    End If
     ' Dem so nhom ban
     Dim countDirty As Long
     countDirty = 0
@@ -520,7 +680,8 @@ NextGroup:
     Application.EnableEvents = True
     ' Hien thi ket qua NKC truoc (toast tu tat)
     InfoToast "X" & ChrW(7917) & " l" & ChrW(253) & " NKC ho" & ChrW(224) & "n th" & ChrW(224) & "nh! Output: " & (dongOut - 1) & _
-              "; Nh" & ChrW(243) & "m b" & ChrW(7845) & "t to" & ChrW(224) & "n: " & countDirty & "; C" & ChrW(7847) & "n review: " & countReview
+              "; Nh" & ChrW(243) & "m b" & ChrW(7845) & "t to" & ChrW(224) & "n: " & countDirty & _
+              IIf(includeReview, "; C" & ChrW(7847) & "n review: " & countReview, "")
     ' Sau do moi tinh TB (neu co)
     Dim tbMsg As String
     If WorksheetExists("TB", wb) Then
@@ -619,6 +780,7 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     Dim dictSourceTK As Object
     Dim tkSource As String
     Dim useLeftMatch As Boolean
+    Dim warnNonNum As String
     On Error GoTo ErrorHandler
     Set wb = wsNKC.Parent
     Set wsTB = wb.Sheets("TB")
@@ -632,6 +794,9 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
         Auto_Tinh_TB = vbCrLf & vbCrLf & "TB " & ChrW(273) & ChrW(227) & " " & ChrW(273) & ChrW(432) & ChrW(7907) & "c c" & ChrW(7853) & "p nh" & ChrW(7853) & "t c" & ChrW(244) & "ng th" & ChrW(7913) & "c B, L M tr" & ChrW(234) & "n " & (lastRowTB - 3) & " d" & ChrW(242) & "ng."
         Exit Function
     End If
+    ' Đảm bảo cột số E:J của TB là số (chuyển text sang số nếu có)
+    warnNonNum = NormalizeTBNumberColumns(wsTB, 4, lastRowTB)
+    If Len(warnNonNum) > 0 Then WarnToast warnNonNum
     ' Tao dictionary chua danh sach TK tu sheet "So Nhat Ky Chung"
     Set dictSourceTK = CreateObject("Scripting.Dictionary")
     On Error Resume Next
@@ -723,13 +888,56 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     wsTB.Cells(1, 10).Formula = "=SUBTOTAL(9,J4:J" & lastRowTB & ")"
     wsTB.Cells(1, 12).ClearContents
     wsTB.Cells(1, 13).ClearContents
-    wsTB.Range("E1:M" & lastRowTB).NumberFormat = "#,##0"
+    wsTB.Range("E1:L" & lastRowTB).NumberFormat = "#,##0"
     Auto_Tinh_TB = ""
     Exit Function
 ErrorHandler:
     MsgBox "L" & ChrW(7894) & "I: Kh" & ChrW(244) & "ng th" & ChrW(7875) & " t" & ChrW(237) & "nh to" & ChrW(225) & "n TB!" & vbCrLf & vbCrLf & _
            "Chi ti" & ChrW(7871) & "t: " & Err.Description, vbCritical
     Auto_Tinh_TB = ""
+End Function
+
+Private Function NormalizeTBNumberColumns(wsTB As Worksheet, ByVal firstRow As Long, ByVal lastRow As Long) As String
+    On Error Resume Next
+    If wsTB Is Nothing Then Exit Function
+    If lastRow < firstRow Then Exit Function
+
+    Dim rng As Range
+    Set rng = wsTB.Range("E" & firstRow & ":J" & lastRow)
+    Dim arr As Variant
+    arr = rng.Value
+
+    Dim r As Long, c As Long
+    Dim tmp As String
+    Dim badCount As Long
+    Dim badList As String
+
+    For r = 1 To UBound(arr, 1)
+        For c = 1 To UBound(arr, 2)
+            If IsEmpty(arr(r, c)) Then GoTo NextCell
+            If IsNumeric(arr(r, c)) Then GoTo NextCell
+            tmp = Trim$(CStr(arr(r, c)))
+            If Len(tmp) = 0 Then
+                arr(r, c) = ""
+            ElseIf IsNumeric(tmp) Then
+                arr(r, c) = Val(tmp)
+            Else
+                arr(r, c) = 0
+                badCount = badCount + 1
+                If badCount <= 5 Then
+                    badList = badList & IIf(Len(badList) > 0, ", ", "") & rng.Cells(r, c).Address(False, False)
+                End If
+            End If
+NextCell:
+        Next c
+    Next r
+
+    rng.Value = arr
+    rng.NumberFormat = "#,##0"
+
+    If badCount > 0 Then
+        NormalizeTBNumberColumns = "TB: " & badCount & " ô E:J không phải số (đã đặt =0). Kiểm tra các ô: " & badList
+    End If
 End Function
 ' Wrapper cho Ribbon button - Cap nhat dropdown TH
 Public Sub Update_TH_Dropdown_Button(control As IRibbonControl)
@@ -840,6 +1048,7 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
     Dim totalDebitPS As Double, totalCreditPS As Double
     Dim sdBalance As Double
     Dim filterState As Collection
+    Dim warnNonNum As String
     On Error GoTo ErrHandler
     Set wb = wsNKC.Parent
     On Error Resume Next
@@ -855,6 +1064,10 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
         Else
             Set wsTH = Tao_TH_Template(wb, wsNKC)
         End If
+        On Error GoTo ErrHandler
+        ' Đảm bảo event TH được gán sau khi tạo mới
+        On Error Resume Next
+        Application.Run "Enable_TH_AutoRefresh"
         On Error GoTo ErrHandler
     End If
     If wsTH Is Nothing Then
@@ -1039,9 +1252,9 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
     lastClearRow = Application.Max(rowSDCK + 20, lastExisting)
 
     ' Clear dong thua giua data va SPS
-    If actualSlots > 0 Then
-        wsTH.Range("A" & (6 + actualSlots) & ":E" & (rowSPS - 1)).ClearContents
-    End If
+    ' Data rows: 6 to (5 + actualSlots), SPS row: (5 + actualSlots + 1) = (6 + actualSlots)
+    ' No gap exists, so no clearing needed here
+    ' (Previous code incorrectly cleared the last data row)
 
     ' Clear dong thua phia duoi SDCK
     wsTH.Range("A" & (rowSDCK + 1) & ":E" & lastClearRow).ClearContents
@@ -1733,7 +1946,7 @@ Public Sub Tinh_Toan_TB(control As IRibbonControl)
     wsTB.Cells(1, 9).Formula = "=SUBTOTAL(9,I4:I" & lastRowTB & ")"  ' Tong Cuoi ky No
     wsTB.Cells(1, 10).Formula = "=SUBTOTAL(9,J4:J" & lastRowTB & ")"  ' Tong Cuoi ky Co
     ' Format number columns
-    wsTB.Range("E1:M" & lastRowTB).NumberFormat = "#,##0"
+    wsTB.Range("E1:L" & lastRowTB).NumberFormat = "#,##0"
     MsgBox "T" & ChrW(237) & "nh to" & ChrW(225) & "n TB th" & ChrW(224) & "nh c" & ChrW(244) & "ng! " & ChrW(272) & ChrW(227) & " c" & ChrW(7853) & "p nh" & ChrW(7853) & "t c" & ChrW(244) & "ng th" & ChrW(7913) & "c B, L, M cho " & (lastRowTB - 3) & " d" & ChrW(242) & "ng.", vbInformation
 End Sub
 ' Helper function to check if worksheet exists
@@ -1854,5 +2067,3 @@ Private Function DictToPairsSorted(dict As Object) As Variant
 
     DictToPairsSorted = res
 End Function
-
-

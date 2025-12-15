@@ -2,10 +2,14 @@
 """
 Rebuild gafc_audit_helper.xlam using modules in extracted_clean.
 Creates gafc_audit_helper_new.xlam alongside the original.
+Supports auto-lock VBA project with encrypted password storage.
 """
 from pathlib import Path
 import shutil
 import sys
+import getpass
+import base64
+import hashlib
 
 try:
     import win32com.client  # type: ignore
@@ -13,10 +17,22 @@ except ImportError:
     print("ERROR: pywin32 not installed. Run: pip install pywin32", file=sys.stderr)
     sys.exit(1)
 
+try:
+    from cryptography.fernet import Fernet
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+    print("WARNING: cryptography not installed. Password will be obfuscated only.")
+    print("For better security, run: pip install cryptography")
+
 BASE_DIR = Path(__file__).resolve().parent
 SOURCE_XLAM = BASE_DIR / "gafc_audit_helper.xlam"
-OUTPUT_XLAM = BASE_DIR / "gafc_audit_helper_new.xlam"
+OUTPUT_XLAM_PROD = BASE_DIR / "gafc_audit_helper_new.xlam"
+OUTPUT_XLAM_DEV = BASE_DIR / "gafc_audit_helper_new_dev.xlam"
 MODULE_DIR = BASE_DIR / "extracted_clean"
+CONFIG_FILE = BASE_DIR / "build_config.dat"
+KEY_FILE = BASE_DIR / ".build_key"
+PASSWORD_FILE = BASE_DIR / "vba_password.txt"
 
 VBEXT_CT_STD_MODULE = 1
 VBEXT_CT_CLASS_MODULE = 2
@@ -24,27 +40,277 @@ VBEXT_CT_MSFORM = 3
 VBEXT_CT_DOC_MODULE = 100
 
 
-def copy_sources():
+def get_machine_key():
+    """Generate a machine-specific encryption key based on hardware ID."""
+    import platform
+    import uuid
+
+    # Use machine-specific identifiers
+    machine_id = f"{platform.node()}-{uuid.getnode()}".encode()
+    # Create a deterministic key from machine ID
+    key_hash = hashlib.sha256(machine_id).digest()
+    # Fernet requires 32 bytes base64-encoded key
+    return base64.urlsafe_b64encode(key_hash)
+
+
+def encrypt_password(password):
+    """Encrypt password using machine-specific key."""
+    if not CRYPTO_AVAILABLE:
+        # Fallback: simple base64 obfuscation (NOT secure, just hiding)
+        return base64.b64encode(password.encode()).decode()
+
+    key = get_machine_key()
+    f = Fernet(key)
+    encrypted = f.encrypt(password.encode())
+    return encrypted.decode()
+
+
+def decrypt_password(encrypted_password):
+    """Decrypt password using machine-specific key."""
+    if not CRYPTO_AVAILABLE:
+        # Fallback: decode base64
+        try:
+            return base64.b64decode(encrypted_password.encode()).decode()
+        except:
+            return None
+
+    try:
+        key = get_machine_key()
+        f = Fernet(key)
+        decrypted = f.decrypt(encrypted_password.encode())
+        return decrypted.decode()
+    except:
+        return None
+
+
+def read_password_from_file():
+    """Read password from vba_password.txt file."""
+    if not PASSWORD_FILE.exists():
+        return None
+
+    try:
+        content = PASSWORD_FILE.read_text(encoding='utf-8')
+        for line in content.split('\n'):
+            line = line.strip()
+            # Skip empty lines and comments
+            if not line or line.startswith('#'):
+                continue
+            # First non-comment line is the password
+            return line
+    except Exception as e:
+        print(f"Warning: Could not read {PASSWORD_FILE.name}: {e}")
+
+    return None
+
+
+def get_vba_password(dev_mode=False, for_unlock=False):
+    """Get VBA password from vba_password.txt file.
+
+    In dev mode we still allow reading the password solely to unlock an
+    already-locked source file, but we will not re-lock it on save.
+    """
+    # Skip password in dev mode unless explicitly requested for unlock
+    if dev_mode and not for_unlock:
+        print("Development mode: VBA project will NOT be locked")
+        return None
+    if dev_mode and for_unlock:
+        print("Development mode: using password only to UNLOCK source if needed")
+
+    # Read password from vba_password.txt
+    password = read_password_from_file()
+
+    if password:
+        print(f"Using password from {PASSWORD_FILE.name}")
+        return password
+
+    # No password found
+    print(f"WARNING: No password found in {PASSWORD_FILE.name}")
+    print("VBA project will NOT be locked")
+    print(f"To set password, edit {PASSWORD_FILE.name} and add your password")
+    return None
+
+
+def unlock_vba_project(vb_proj, password):
+    """Unlock VBA project if it's locked."""
+    if not password:
+        return
+    try:
+        # Check if locked
+        try:
+            _ = vb_proj.VBComponents.Count
+            print("VBA Project is already unlocked")
+        except:
+            # Try to unlock
+            vb_proj.Protection.Unlock(password)
+            print("VBA Project unlocked successfully")
+    except Exception as e:
+        print(f"Warning: Could not unlock VBA Project: {e}")
+
+
+def lock_vba_project(vb_proj, password):
+    """Lock VBA project with password."""
+    if not password:
+        print("No password provided, VBA project will remain unlocked")
+        return
+
+    try:
+        # Use the .Lock() method with password parameter
+        # This is the CORRECT API for VBA password protection
+        vb_proj.Protection.Lock(password)
+        print(f"VBA Project locked with password successfully")
+    except Exception as e:
+        print(f"Warning: Could not lock VBA Project: {e}")
+        print(f"Error details: {type(e).__name__}")
+
+
+def make_vba_unviewable(xlam_path):
+    """
+    Make VBA project completely unviewable by modifying binary structure.
+    This changes 'DPB=' to 'DPx=' in the vbaProject.bin file, which makes
+    the project show 'Project is unviewable' instead of password prompt.
+    """
+    import zipfile
+    import tempfile
+    import shutil
+    from pathlib import Path
+
+    try:
+        print("Making VBA project UNVIEWABLE...")
+
+        # XLAM is a ZIP file, extract it
+        temp_dir = Path(tempfile.mkdtemp())
+        backup_path = xlam_path.parent / (xlam_path.name + ".backup")
+
+        # Backup original
+        shutil.copy2(xlam_path, backup_path)
+
+        # Extract XLAM
+        with zipfile.ZipFile(xlam_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # Find vbaProject.bin
+        vba_project_path = temp_dir / "xl" / "vbaProject.bin"
+        if not vba_project_path.exists():
+            print("Warning: vbaProject.bin not found, skipping unviewable protection")
+            shutil.rmtree(temp_dir)
+            backup_path.unlink()
+            return False
+
+        # Read binary content
+        with open(vba_project_path, 'rb') as f:
+            content = bytearray(f.read())
+
+        # CORRECT Method: Set CMG and GC to empty or corrupt with F's
+        # This makes Excel unable to decrypt the protection state
+        # Reference: MS-OVBA spec, EvilClippy tool, research by Carrie Roberts
+        modified = False
+
+        # Find CMG= and replace its value with F's (must be even number of F's)
+        import re
+
+        # Pattern: CMG="<hex_value>"
+        cmg_pattern = rb'CMG="([0-9A-Fa-f]*)"'
+        match = re.search(cmg_pattern, content)
+        if match:
+            old_value = match.group(1)
+            # Replace with even number of F's >= original length
+            new_value = b'F' * max(len(old_value), 28)
+            content = re.sub(cmg_pattern, b'CMG="' + new_value + b'"', content)
+            modified = True
+            print(f"Corrupted CMG value ({len(old_value)} -> {len(new_value)} F's)")
+
+        # Pattern: GC="<hex_value>"
+        gc_pattern = rb'GC="([0-9A-Fa-f]*)"'
+        match = re.search(gc_pattern, content)
+        if match:
+            old_value = match.group(1)
+            new_value = b'F' * max(len(old_value), 12)
+            content = re.sub(gc_pattern, b'GC="' + new_value + b'"', content)
+            modified = True
+            print(f"Corrupted GC value ({len(old_value)} -> {len(new_value)} F's)")
+
+        # Also corrupt DPB for extra protection
+        dpb_pattern = rb'DPB="([0-9A-Fa-f]*)"'
+        match = re.search(dpb_pattern, content)
+        if match:
+            old_value = match.group(1)
+            new_value = b'F' * max(len(old_value), 28)
+            content = re.sub(dpb_pattern, b'DPB="' + new_value + b'"', content)
+            modified = True
+            print(f"Corrupted DPB value ({len(old_value)} -> {len(new_value)} F's)")
+
+        if not modified:
+            print("Warning: Could not find CMG/GC/DPB markers to modify")
+
+        # Write modified content
+        with open(vba_project_path, 'wb') as f:
+            f.write(content)
+
+        # Repack XLAM
+        xlam_path.unlink()
+        with zipfile.ZipFile(xlam_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
+            for file_path in temp_dir.rglob('*'):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(temp_dir)
+                    zip_ref.write(file_path, arcname)
+
+        # Cleanup
+        shutil.rmtree(temp_dir)
+        backup_path.unlink()
+
+        print("[OK] VBA Project is now UNVIEWABLE (shows 'Project is unviewable')")
+        return True
+
+    except Exception as e:
+        print(f"Warning: Could not make VBA unviewable: {e}")
+        # Restore backup if exists
+        if backup_path.exists():
+            shutil.copy2(backup_path, xlam_path)
+            backup_path.unlink()
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        return False
+
+
+def copy_sources(output_path):
     if not SOURCE_XLAM.exists():
         print(f"ERROR: source xlam not found: {SOURCE_XLAM}")
         sys.exit(1)
     if not MODULE_DIR.exists():
         print(f"ERROR: module folder not found: {MODULE_DIR}")
         sys.exit(1)
-    shutil.copy2(SOURCE_XLAM, OUTPUT_XLAM)
+    shutil.copy2(SOURCE_XLAM, output_path)
 
 
-def rebuild():
-    copy_sources()
-    print(f"Opening Excel and loading {OUTPUT_XLAM} ...")
+def rebuild(dev_mode=False, make_unviewable=False):
+    # Choose output per mode to avoid overwriting prod build when doing dev build
+    output_xlam = OUTPUT_XLAM_DEV if dev_mode else OUTPUT_XLAM_PROD
+    copy_sources(output_xlam)
+
+    # Get password (dev mode uses it only for unlock, not for lock)
+    password = get_vba_password(dev_mode=dev_mode, for_unlock=True)
+
+    print(f"Opening Excel and loading {output_xlam} ...")
     excel = None
     wb = None
     try:
         excel = win32com.client.Dispatch("Excel.Application")
         excel.Visible = False
         excel.DisplayAlerts = False
-        wb = excel.Workbooks.Open(str(OUTPUT_XLAM))
+        wb = excel.Workbooks.Open(str(output_xlam))
         vb_proj = wb.VBProject
+
+        # Unlock if source file is password protected
+        unlock_vba_project(vb_proj, password)
+        try:
+            # Confirm unlocked; if not, stop early with guidance
+            _ = vb_proj.VBComponents.Count
+        except Exception:
+            print("ERROR: VBA project is locked and could not be unlocked.")
+            print(f"Provide the password in {PASSWORD_FILE.name} even for --dev builds.")
+            wb.Close(SaveChanges=False)
+            excel.Quit()
+            sys.exit(1)
 
         to_remove = []
         for comp in vb_proj.VBComponents:
@@ -237,9 +503,26 @@ def rebuild():
         except Exception as e:
             print(f"Warning: Could not set Version property: {e}")
 
+        # Lock VBA project with password before closing
+        lock_vba_project(vb_proj, password)
+
         wb.Close(SaveChanges=True)
         excel.Quit()
-        print(f"Done. Output: {OUTPUT_XLAM}")
+
+        # Optional: harden by making VBA unviewable (binary patch)
+        unviewable_applied = False
+        if make_unviewable and not dev_mode:
+            unviewable_applied = make_vba_unviewable(output_xlam)
+
+        print(f"Done. Output: {output_xlam}")
+        if password:
+            print(f"")
+            print(f"VBA Project has been LOCKED with password: {password}")
+            print(f"Users must enter this password to view/edit VBA code")
+            if unviewable_applied:
+                print(f"")
+                print(f"VBA project is set to UNVIEWABLE (no code view even with password).")
+                print(f"To restore view/edit, run: python unlock_vba.py {output_xlam.name}")
     except Exception as exc:  # pragma: no cover
         print(f"ERROR: {exc}", file=sys.stderr)
         if wb:
@@ -250,4 +533,23 @@ def rebuild():
 
 
 if __name__ == "__main__":
-    rebuild()
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='Rebuild XLAM with VBA modules from extracted_clean',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  python rebuild_xlam.py           # Production build (with password lock)
+  python rebuild_xlam.py --dev     # Development build (no password lock)
+        '''
+    )
+    parser.add_argument('--dev', action='store_true',
+                        help='Development mode: build without locking; still needs password to unlock source if it is locked')
+    parser.add_argument('--unviewable', dest='unviewable', action='store_true',
+                        help='After locking, patch VBA project to be unviewable (harder to reverse)')
+    parser.add_argument('--no-unviewable', dest='unviewable', action='store_false',
+                        help='Skip unviewable patch (keep normal password prompt)')
+    parser.set_defaults(unviewable=True)
+    args = parser.parse_args()
+
+    rebuild(dev_mode=args.dev, make_unviewable=args.unviewable)

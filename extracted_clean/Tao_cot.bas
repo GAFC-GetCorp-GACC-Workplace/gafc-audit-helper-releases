@@ -111,12 +111,13 @@ Public Sub Tao_Template_NKC_TB(control As IRibbonControl)
         .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
         .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
         .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
+        .Cells(2, 11).Value = "Kh" & ChrW(225) & "c"
 
-        ' Format header
-        .Range("A2:J2").Font.Bold = True
-        .Range("A2:J2").Interior.Color = RGB(220, 230, 241)
-        .Range("A2:J2").AutoFilter
-        .Columns("A:J").AutoFit
+        ' Format header (sổ đã xử lý: chỉ thêm Khác, không có review)
+        .Range("A2:K2").Font.Bold = True
+        .Range("A2:K2").Interior.Color = RGB(220, 230, 241)
+        .Range("A2:K2").AutoFilter
+        .Columns("A:K").AutoFit
         ' Nút xóa lọc nhanh ở H1
         ' Xoa button cu (neu co) va tao button Xoa loc gon trong cot H
         Dim btn As Button, b As Button
@@ -330,4 +331,8 @@ Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Work
         .Range("B12:E12").Borders(xlEdgeTop).Weight = xlThin
     End With
     Set Tao_TH_Template = ws
+    ' Đảm bảo event TH được gán cho workbook mới tạo TH
+    On Error Resume Next
+    Application.Run "Enable_TH_AutoRefresh"
+    On Error GoTo 0
 End Function

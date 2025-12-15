@@ -31,3 +31,10 @@ test_*.xlsx
 
 # Secrets (DO NOT COMMIT)
 .git/.github_token
+build_config.txt
+build_config.dat
+.build_key
+vba_password.txt
+
+# Obfuscated code (keep only original code in Git)
+extracted_obfuscated/

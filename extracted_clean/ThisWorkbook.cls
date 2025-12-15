@@ -13,8 +13,8 @@ Private Sub Workbook_Open()
     Enable_TH_AutoRefresh
     On Error GoTo 0
 
-    ' Chỉ set trạng thái license, không chặn Excel hoặc bật MsgBox
-    If Not InitLicenseStateOnOpen(True) Then
+    ' Đảm bảo có key; nếu chưa có sẽ hỏi ngay
+    If Not EnsureLicenseOnOpen() Then
         Exit Sub
     End If
 

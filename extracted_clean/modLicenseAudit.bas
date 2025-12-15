@@ -16,7 +16,8 @@ Private Const CHECK_INTERVAL_DAYS As Double = 7   ' check every 7 days normally
 Private Const URGENT_CHECK_DAYS As Double = 1     ' check daily if expiring soon
 Private Const EXPIRY_WARNING_DAYS As Double = 7   ' warn if expires within 7 days
 Private Const GRACE_DAYS As Double = 7            ' offline grace after last successful check
-Private Const DEV_ALLOW_BYPASS As Boolean = True  ' set False khi build release
+Private Const DEV_ALLOW_BYPASS As Boolean = False  ' set False khi build release
+Private Const RATE_LIMIT_COOLDOWN_MIN As Double = 15 / (24 * 60) ' 15 phút
 
 Public gLicenseOk As Boolean
 Public gLicenseReason As String
@@ -40,7 +41,54 @@ Public Function InitLicenseStateOnOpen(Optional ByVal forceOnline As Boolean = T
     InitLicenseStateOnOpen = gLicenseOk
 End Function
 
+Public Function EnsureLicenseOnOpen() As Boolean
+    Dim st As LicenseState
+    st = LoadState()
+
+    ' Chưa có key -> hỏi ngay
+    If Len(Trim$(st.licenseKey)) = 0 Then
+        Dim key As String, errMsg As String
+        key = PromptForKeyUI()
+        If Len(Trim$(key)) = 0 Then
+            gLicenseOk = False
+            gLicenseReason = "NO_KEY"
+            Exit Function
+        End If
+        If Not ActivateLicenseAudit(Trim$(key), errMsg) Then
+            gLicenseOk = False
+            gLicenseReason = errMsg
+            MsgBox IIf(Len(errMsg) > 0, errMsg, "Kich hoat khong thanh cong."), vbCritical, "License Required"
+            Exit Function
+        End If
+        gLicenseOk = True
+        gLicenseReason = ""
+        EnsureLicenseOnOpen = True
+        Exit Function
+    End If
+
+    ' Đã có key -> validate theo cache/grace
+    gLicenseOk = ValidateLicenseAudit(False)
+    If Not gLicenseOk Then gLicenseReason = GetLastReason()
+    EnsureLicenseOnOpen = gLicenseOk
+End Function
+
 Public Function LicenseGate(Optional ByVal showMessage As Boolean = True) As Boolean
+    ' Lazy re-validate if chưa set cờ phiên hiện tại (tránh popup ảo khi Workbook_Open chưa chạy)
+    If Not gLicenseOk Then
+        Dim stCache As LicenseState
+        stCache = LoadState()
+        If Len(Trim$(stCache.licenseKey)) > 0 Then
+            gLicenseOk = ValidateLicenseAudit(False)
+            If gLicenseOk Then
+                gLicenseReason = ""
+                LicenseGate = True
+                Exit Function
+            Else
+                gLicenseReason = GetLastReason()
+            End If
+        End If
+    End If
+
     If gLicenseOk Then
         LicenseGate = True
         Exit Function
@@ -129,6 +177,13 @@ Public Function ValidateLicenseAudit(Optional ByVal forceOnline As Boolean = Fal
     st = LoadState()
     If Len(st.licenseKey) = 0 Then Exit Function
 
+    ' Nếu vừa bị rate limit, tạm hoãn gọi server cho đến hết cooldown
+    If st.lastReason = "RATE_LIMIT_EXCEEDED" And st.graceUntil > Now Then
+        ' Cho phép dùng nếu còn trong cache/grace, tránh spam server
+        ValidateLicenseAudit = AllowByGrace(st)
+        Exit Function
+    End If
+
     ' Detect clock tampering
     If DetectClockTampering(st) Then
         forceOnline = True
@@ -199,6 +254,11 @@ Public Function ValidateLicenseAudit(Optional ByVal forceOnline As Boolean = Fal
     If status = -1 Then
         ValidateLicenseAudit = AllowByGrace(st)
         Exit Function
+    End If
+
+    ' Rate limit: set cooldown to avoid hammering
+    If JsonString(resp, "reason") = "RATE_LIMIT_EXCEEDED" Then
+        st.graceUntil = Now + RATE_LIMIT_COOLDOWN_MIN
     End If
 
     ' Invalid for other reasons: store reason and block
@@ -436,7 +496,10 @@ Private Function CollectHardware() As Object
 
 TryFallback:
     On Error GoTo Fail
-    Set d = CreateObject("Scripting.Dictionary")
+    ' IMPORTANT: Keep existing WMI values, only fill missing fields with fallback
+    ' Don't create new dictionary - reuse existing one with WMI values
+    If d Is Nothing Then Set d = CreateObject("Scripting.Dictionary")
+
     Dim fallbackCpu As String, fallbackDisk As String, fallbackUuid As String
     Dim fallbackBios As String, fallbackMac As String
 
@@ -446,12 +509,13 @@ TryFallback:
     fallbackBios = CleanHW(Environ$("COMPUTERNAME"))
     fallbackMac = GetMacAddressFallback()
 
-    d("cpuId") = fallbackCpu
-    d("motherboardSerial") = ""
-    d("biosSerial") = fallbackBios
-    d("diskSerial") = fallbackDisk
-    d("macAddress") = fallbackMac
-    d("systemUuid") = fallbackUuid
+    ' Fill in missing values only (keep WMI values if already collected)
+    If Not d.Exists("cpuId") Or Len(d("cpuId")) = 0 Then d("cpuId") = fallbackCpu
+    If Not d.Exists("motherboardSerial") Or Len(d("motherboardSerial")) = 0 Then d("motherboardSerial") = ""
+    If Not d.Exists("biosSerial") Or Len(d("biosSerial")) = 0 Then d("biosSerial") = fallbackBios
+    If Not d.Exists("diskSerial") Or Len(d("diskSerial")) = 0 Then d("diskSerial") = fallbackDisk
+    If Not d.Exists("macAddress") Or Len(d("macAddress")) = 0 Then d("macAddress") = fallbackMac
+    If Not d.Exists("systemUuid") Or Len(d("systemUuid")) = 0 Then d("systemUuid") = fallbackUuid
 
     Dim nonEmptyCount As Integer
     nonEmptyCount = 0
@@ -596,7 +660,22 @@ End Function
 
 Private Function SafeParseDate(ByVal s As String) As Date
     On Error Resume Next
-    SafeParseDate = CDate(s)
+    Dim t As String
+    t = Trim$(s)
+    ' Chuẩn hóa các định dạng ISO như 2026-12-12T02:43:42.702+00
+    If InStr(1, t, "T", vbTextCompare) > 0 Then t = Replace$(t, "T", " ")
+    If Right$(t, 1) = "Z" Or Right$(t, 1) = "z" Then t = Left$(t, Len(t) - 1)
+    ' Bỏ timezone offset (+00:00 hoặc +00) tìm sau phần ngày (>= vị trí 12)
+    Dim posTZ As Long
+    posTZ = InStr(12, t, "+")
+    If posTZ = 0 Then posTZ = InStr(12, t, "-")
+    If posTZ > 0 Then t = Left$(t, posTZ - 1)
+    ' Bỏ phần milli/frac giây
+    Dim dotPos As Long
+    dotPos = InStrRev(t, ".")
+    If dotPos > 0 Then t = Left$(t, dotPos - 1)
+
+    SafeParseDate = CDate(t)
 End Function
 
 Private Function StatePath() As String
@@ -609,27 +688,86 @@ Private Function StatePath() As String
 End Function
 
 Private Sub SaveState(st As LicenseState)
-    On Error Resume Next
+    On Error GoTo SaveError
     Dim plainData As String
+
+    ' Safe format dates - handle zero dates
+    Dim lastValidStr As String, expiresStr As String, graceStr As String
+
+    On Error Resume Next
+    If st.lastValidAt > 0 Then
+        lastValidStr = Format$(st.lastValidAt, "yyyy-mm-dd hh:nn:ss")
+    Else
+        lastValidStr = "0000-00-00 00:00:00"
+    End If
+    If Err.Number <> 0 Then
+        lastValidStr = "0000-00-00 00:00:00"
+        Err.Clear
+    End If
+    On Error GoTo SaveError
+
+    On Error Resume Next
+    If st.expiresAt > 0 Then
+        expiresStr = Format$(st.expiresAt, "yyyy-mm-dd hh:nn:ss")
+    Else
+        expiresStr = "0000-00-00 00:00:00"
+    End If
+    If Err.Number <> 0 Then
+        expiresStr = "0000-00-00 00:00:00"
+        Err.Clear
+    End If
+    On Error GoTo SaveError
+
+    On Error Resume Next
+    If st.graceUntil > 0 Then
+        graceStr = Format$(st.graceUntil, "yyyy-mm-dd hh:nn:ss")
+    Else
+        graceStr = "0000-00-00 00:00:00"
+    End If
+    If Err.Number <> 0 Then
+        graceStr = "0000-00-00 00:00:00"
+        Err.Clear
+    End If
+    On Error GoTo SaveError
+
     plainData = "license_key=" & st.licenseKey & vbCrLf & _
-                "last_valid_at=" & Format$(st.lastValidAt, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
-                "expires_at=" & Format$(st.expiresAt, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
-                "grace_until=" & Format$(st.graceUntil, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
+                "last_valid_at=" & lastValidStr & vbCrLf & _
+                "expires_at=" & expiresStr & vbCrLf & _
+                "grace_until=" & graceStr & vbCrLf & _
                 "boot_count=" & st.bootCount & vbCrLf & _
                 "last_reason=" & st.lastReason
 
     Dim checksum As String
     checksum = ComputeChecksum(plainData)
+
+    If Len(checksum) = 0 Then
+        Err.Raise vbObjectError + 1000, "SaveState", "Checksum computation failed"
+    End If
+
     plainData = plainData & vbCrLf & "checksum=" & checksum
 
     Dim encrypted As String
     encrypted = EncryptData(plainData)
 
+    If Len(encrypted) = 0 Then
+        Err.Raise vbObjectError + 1001, "SaveState", "Encryption failed"
+    End If
+
+    Dim stPath As String
+    stPath = StatePath()
+    If Len(stPath) = 0 Then
+        Err.Raise vbObjectError + 1002, "SaveState", "Invalid state path"
+    End If
+
     Dim f As Integer
     f = FreeFile
-    Open StatePath For Output As #f
-    ' Ghi dạng mã hóa có prefix để phân biệt với legacy plain-text
+    Open stPath For Output As #f
     Print #f, "ENC1:" & encrypted
+    Close #f
+    Exit Sub
+
+SaveError:
+    On Error Resume Next
     Close #f
 End Sub
 
@@ -681,12 +819,28 @@ Private Function LoadState() As LicenseState
         End If
     Next i
 
+    ' Tách data ra khỏi checksum để validate
     Dim dataWithoutChecksum As String
-    dataWithoutChecksum = Replace(plainData, vbCrLf & "checksum=" & savedChecksum, "")
-    If ComputeChecksum(dataWithoutChecksum) <> savedChecksum Then
-        ' Checksum invalid - clear the state
-        Dim emptySt As LicenseState
-        st = emptySt
+    If Len(Trim$(savedChecksum)) > 0 Then
+        ' Nếu có checksum, remove nó khỏi plainData
+        dataWithoutChecksum = Replace(plainData, vbCrLf & "checksum=" & savedChecksum, "")
+    Else
+        ' Nếu không có checksum, plainData chính là data cần validate
+        dataWithoutChecksum = plainData
+    End If
+
+    ' Nếu thiếu checksum, tự tính lại để sửa file
+    If Len(Trim$(savedChecksum)) = 0 And Len(Trim$(dataWithoutChecksum)) > 0 Then
+        SaveState st
+    ElseIf Len(Trim$(savedChecksum)) > 0 Then
+        ' Validate checksum nếu đã có checksum từ trước
+        Dim expectedChecksum As String
+        expectedChecksum = ComputeChecksum(dataWithoutChecksum)
+        If expectedChecksum <> savedChecksum Then
+            ' Checksum invalid - clear the state
+            Dim emptySt As LicenseState
+            st = emptySt
+        End If
     End If
 
 Done:
@@ -771,6 +925,11 @@ Private Function DecryptData(ByVal encrypted As String) As String
     DecryptData = result
 End Function
 
+' Utility (public) for diagnostics: decrypt ENC1 payload using the same key logic
+Public Function DecryptStateContent(ByVal encrypted As String) As String
+    DecryptStateContent = DecryptData(encrypted)
+End Function
+
 Private Function GetEncryptionKey() As String
     Dim hw As Object
     Set hw = CollectHardware()
@@ -782,16 +941,30 @@ Private Function GetEncryptionKey() As String
 End Function
 
 Private Function ComputeChecksum(ByVal data As String) As String
+    On Error GoTo ChecksumError
     Dim hash As Long
     hash = 5381
     Dim i As Long
     Dim secret As String
     secret = "GAFC_SECRET_2025"
+
     data = data & secret
+
     For i = 1 To Len(data)
-        hash = ((hash * 33) Xor Asc(Mid(data, i, 1))) And &H7FFFFFFF
+        ' CRITICAL: Must use intermediate variable to prevent overflow
+        ' Cannot do (hash * 33) in one expression - will overflow before AND
+        Dim temp As Long
+        temp = (hash And &H7FFFFFFF&)  ' Keep in positive range first
+        temp = temp Mod 65536           ' Reduce to prevent overflow in multiplication
+        temp = (temp * 33&) Xor CLng(Asc(Mid(data, i, 1)))
+        hash = temp And &H7FFFFFFF&     ' Keep result positive
     Next i
+
     ComputeChecksum = Hex$(hash)
+    Exit Function
+
+ChecksumError:
+    ComputeChecksum = ""
 End Function
 
 Private Function ValidateCodeIntegrity() As Boolean
@@ -823,26 +996,42 @@ MaybeBypass:
     End If
 End Function
 
-Private Function Base64Encode(ByVal text As String) As String
-    On Error Resume Next
+Public Function Base64Encode(ByVal text As String) As String
+    On Error GoTo Base64Error
     Dim xml As Object
     Set xml = CreateObject("MSXML2.DOMDocument")
+    If xml Is Nothing Then GoTo Base64Error
+
     Dim node As Object
     Set node = xml.createElement("b64")
+    If node Is Nothing Then GoTo Base64Error
+
     node.DataType = "bin.base64"
     node.nodeTypedValue = StringToByteArray(text)
     Base64Encode = node.text
+    Exit Function
+
+Base64Error:
+    Base64Encode = ""
 End Function
 
-Private Function Base64Decode(ByVal base64 As String) As String
-    On Error Resume Next
+Public Function Base64Decode(ByVal base64 As String) As String
+    On Error GoTo DecodeError
     Dim xml As Object
     Set xml = CreateObject("MSXML2.DOMDocument")
+    If xml Is Nothing Then GoTo DecodeError
+
     Dim node As Object
     Set node = xml.createElement("b64")
+    If node Is Nothing Then GoTo DecodeError
+
     node.DataType = "bin.base64"
     node.text = base64
     Base64Decode = ByteArrayToString(node.nodeTypedValue)
+    Exit Function
+
+DecodeError:
+    Base64Decode = ""
 End Function
 
 Private Function StringToByteArray(ByVal text As String) As Variant
