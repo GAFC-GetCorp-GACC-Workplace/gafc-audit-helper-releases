@@ -29,26 +29,8 @@ fi
 
 echo ""
 
-# Step 0: Check for uncommitted changes in extracted_clean
-echo "[0/4] Checking for local code changes..."
-if git diff --quiet extracted_clean/; then
-    # No changes in extracted_clean, safe to sync from XLSTART
-    echo "  No local changes detected. Syncing from XLSTART..."
-    XLSTART="$APPDATA/Microsoft/Excel/XLSTART"
-    XLAM_NAME="gafc_audit_helper.xlam"
-    SOURCE="$XLSTART/$XLAM_NAME"
-    TARGET="$(pwd)/$XLAM_NAME"
-
-    if [ -f "$SOURCE" ]; then
-        cp -f "$SOURCE" "$TARGET" 2>/dev/null && echo "  ✓ Code synced from XLSTART" || echo "  ⚠ Could not sync (file may be in use)"
-    else
-        echo "  ⚠ XLAM not found in XLSTART (skip sync)"
-    fi
-else
-    echo "  ⚠ Local changes detected in extracted_clean/"
-    echo "  Skipping XLSTART sync to preserve your changes."
-fi
-
+# Step 0: Skip XLSTART sync to avoid pulling locked/unviewable add-in
+echo "[0/5] Using repo copy of gafc_audit_helper.xlam (no XLSTART sync)"
 echo ""
 
 # Show current version from git tags
@@ -128,12 +110,11 @@ else
     echo "  ⚠ Warning: Manifest not found, skipping manifest update"
 fi
 
-# Build XLAM
+# Build XLAM (keep base file untouched; release artifact is gafc_audit_helper_new.xlam)
 python rebuild_xlam.py
 if [ $? -eq 0 ] && [ -f "gafc_audit_helper_new.xlam" ]; then
-    cp -f "gafc_audit_helper_new.xlam" "gafc_audit_helper.xlam"
-    rm -f "gafc_audit_helper_new.xlam"
-    echo "  ✓ XLAM built successfully"
+    echo "  ✓ XLAM built successfully: gafc_audit_helper_new.xlam"
+    echo "  (Base gafc_audit_helper.xlam kept open for future dev builds)"
 else
     echo "  ✗ Build failed! Please fix errors and try again."
     exit 1

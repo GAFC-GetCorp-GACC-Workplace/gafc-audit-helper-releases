@@ -35,9 +35,8 @@ echo.
 echo Creating release v%VERSION%...
 echo.
 
-:: Step 0: Build prod XLAM (always use gafc_audit_helper_new.xlam, then rename)
+:: Step 0: Build prod XLAM (keep base gafc_audit_helper.xlam intact)
 set OUT_PROD=gafc_audit_helper_new.xlam
-set FINAL_XLAM=gafc_audit_helper.xlam
 
 echo [0/5] Building XLAM (prod)...
 python rebuild_xlam.py
@@ -51,9 +50,8 @@ if not exist "%OUT_PROD%" (
     pause
     exit /b 1
 )
-copy /Y "%OUT_PROD%" "%FINAL_XLAM%" >nul
-del "%OUT_PROD%" >nul 2>&1
-echo   OK -> %FINAL_XLAM%
+echo   OK -> %OUT_PROD%
+echo   Base gafc_audit_helper.xlam kept unchanged (open) for dev builds
 echo.
 
 :: Step 1: Add and commit changes
