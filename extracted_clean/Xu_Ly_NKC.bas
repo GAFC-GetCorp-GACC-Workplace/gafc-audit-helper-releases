@@ -9,6 +9,7 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
     Dim lastRow As Long, r As Long
     Dim ngayHT As Date, ngayCT As Date
     Dim tkNo As String, tkCo As String
+    Dim tkNo3 As String, tkCo3 As String
 
     On Error Resume Next
     lastRow = wsNKC.Cells(wsNKC.Rows.Count, 1).End(xlUp).Row
@@ -28,6 +29,8 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
             ngayHT = wsNKC.Cells(r, 1).Value
             tkNo = Trim(CStr(wsNKC.Cells(r, 8).Value))
             tkCo = Trim(CStr(wsNKC.Cells(r, 9).Value))
+            tkNo3 = Left$(tkNo, 3)
+            tkCo3 = Left$(tkCo, 3)
 
             ' Bo sung Ngay chung tu (cot 2) = Ngay hach toan neu thieu
             If wsNKC.Cells(r, 2).Value = "" Or Not IsDate(wsNKC.Cells(r, 2).Value) Then
@@ -40,13 +43,9 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
                 wsNKC.Cells(r, 3).Value = Month(ngayHT)
             End If
 
-            ' Bo sung No (cot 6) va Co (cot 7) tu TK
-            If wsNKC.Cells(r, 6).Value = "" Then
-                wsNKC.Cells(r, 6).Value = tkNo
-            End If
-            If wsNKC.Cells(r, 7).Value = "" Then
-                wsNKC.Cells(r, 7).Value = tkCo
-            End If
+            ' Cot F (No) va G (Co) luon la TK rut gon cap 3 cua cot H/I
+            If tkNo <> "" Then wsNKC.Cells(r, 6).Value = tkNo3
+            If tkCo <> "" Then wsNKC.Cells(r, 7).Value = tkCo3
         End If
     Next r
 
@@ -1381,6 +1380,14 @@ Private Sub DictAddSumWithFull(dictSum As Object, dictFull As Object, key As Str
     If key = "" Then Exit Sub
     If dictSum.Exists(key) Then
         dictSum(key) = dictSum(key) + val
+        ' Luon luu full TK dai nhat de phat hien TK cap 3/4
+        If dictFull.Exists(key) Then
+            If Len(fullKey) > Len(CStr(dictFull(key))) Then
+                dictFull(key) = fullKey
+            End If
+        Else
+            dictFull.Add key, fullKey
+        End If
     Else
         dictSum.Add key, val
         dictFull.Add key, fullKey
