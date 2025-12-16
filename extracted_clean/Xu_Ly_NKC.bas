@@ -1973,11 +1973,22 @@ End Function
 
 Private Function CheckHasLongTK(dictFull As Object) As Boolean
     ' Kiem tra xem trong dictFull co TK nao dai >= 6 ky tu khong
-    Dim keys As Variant, i As Long, tkVal As String
+    Dim vals As Variant, keys As Variant, i As Long, tkVal As String
     CheckHasLongTK = False
     If dictFull Is Nothing Then Exit Function
     If dictFull.Count = 0 Then Exit Function
 
+    ' Prefer checking full TK (dictFull stores fullKey as value)
+    vals = dictFull.Items
+    For i = 0 To UBound(vals)
+        tkVal = CStr(vals(i))
+        If Len(tkVal) >= 6 Then
+            CheckHasLongTK = True
+            Exit Function
+        End If
+    Next i
+
+    ' Fallback: also check key length (in case Items is empty)
     keys = dictFull.keys
     For i = 0 To UBound(keys)
         tkVal = CStr(keys(i))
