@@ -122,7 +122,8 @@ Private Function NormalizeHeaderText(ByVal s As String) As String
     s = Replace$(s, "ế", "e")
     s = Replace$(s, "ề", "e")
     s = Replace$(s, "ể", "e")
-    s = Replace$(s, "ễ", "e")
+    s = Replace$(s, "�
+", "e")
     s = Replace$(s, "ệ", "e")
     s = Replace$(s, "í", "i")
     s = Replace$(s, "ì", "i")
@@ -170,15 +171,19 @@ Public Sub Tao_Template_NKC(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim wb As Workbook
     Dim wsTemplate As Worksheet
+    Dim wsExisting As Worksheet
 
     Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "NKC")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'NKC' da ton tai. Xoa va tao template moi? Du lieu se bi mat.") Then Exit Sub
+    End If
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
 
     ' Delete existing NKC sheet if exists
-    On Error Resume Next
-    wb.Worksheets("NKC").Delete
-    On Error GoTo 0
+    If Not wsExisting Is Nothing Then wsExisting.Delete
 
     ' Create new NKC sheet
     Set wsTemplate = wb.Worksheets.Add
@@ -278,7 +283,20 @@ Private Sub FixClearFilterButton(ws As Worksheet)
 End Sub
 Public Sub Chinh_Format_NKC_va_Pivot(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
+    Dim wsNKC As Worksheet
     Dim errs As String
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsNKC = GetSheet(wb, "NKC")
+    If wsNKC Is Nothing Then
+        MsgBox "Khong tim thay sheet 'NKC'. Hay tao/ xu ly NKC truoc.", vbExclamation
+        Exit Sub
+    End If
+    If ActiveSheet Is Nothing Or StrComp(ActiveSheet.Name, "NKC", vbTextCompare) <> 0 Then
+        If Not ConfirmProceed("Macro nay nen chay tren sheet 'NKC'. Chuyen sang sheet nay khong?") Then Exit Sub
+        wsNKC.Activate
+    End If
     On Error Resume Next
     Application.Run "Chinh_Format_NKC"
     If Err.Number <> 0 Then
@@ -304,11 +322,13 @@ Public Sub Xu_Ly_NKC_TB(control As IRibbonControl)
     Dim wb As Workbook
     Dim wsNguon As Worksheet
     Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
     On Error Resume Next
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
-    If wsNguon Is Nothing Then Set wsNguon = ActiveSheet
-    wsNguon.Activate
+    If Not wsNguon Is Nothing Then
+        wsNguon.Activate
+    End If
     ' Buoc 1: Xu ly NKC (auto tao sheet NKC)
     Xu_ly_NKC1111 control
     ' Buoc 2: Tinh TB neu sheet TB ton tai
@@ -335,9 +355,17 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim dictGroup As Object
     Dim lastRow As Long, i As Long
     Dim arrData As Variant
+    Dim rowCount As Long
+    Dim arrMaCT() As String, arrNgay() As Variant, arrDienGiai() As Variant
+    Dim arrTK() As String, arrTK3() As String
+    Dim arrNo() As Double, arrCo() As Double
+    Dim arrKhac() As Variant, arrMonth() As Variant
+    Dim arrKey() As String
+    Dim pairCache As Object
     Dim key As Variant, r As Variant
     Dim pivotErr As String, thMsg As String
     Dim wsNKCExists As Worksheet
+    Dim isTemplateNKC As Boolean
     Dim includeReview As Boolean
     ' Mac dinh: xu ly du lieu tho -> co cot Can review
     includeReview = True
@@ -350,26 +378,35 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     On Error GoTo 0
 
     If Not wsNKCExists Is Nothing Then
-        ' NKC sheet exists - skip processing, go straight to next steps
-        InfoToast "Ph" & ChrW(225) & "t hi" & ChrW(7879) & "n sheet NKC " & ChrW(273) & ChrW(227) & " t" & ChrW(7891) & "n t" & ChrW(7841) & "i! " & _
-                 "B" & ChrW(7887) & " qua b" & ChrW(432) & ChrW(7899) & "c x" & ChrW(7917) & " l" & ChrW(253) & ", ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c ti" & ChrW(7871) & "p theo..."
+        ' Skip only if this is a manual template NKC
+        isTemplateNKC = (InStr(1, UCase$(CStr(wsNKCExists.Cells(1, 1).Value)), "TEMPLATE NKC") > 0)
+        If isTemplateNKC Then
+            ' NKC sheet exists (template) - skip processing, go straight to next steps
+            InfoToast "Ph" & ChrW(225) & "t hi" & ChrW(7879) & "n sheet NKC " & ChrW(273) & ChrW(227) & " t" & ChrW(7891) & "n t" & ChrW(7841) & "i! " & _
+                     "B" & ChrW(7887) & " qua b" & ChrW(432) & ChrW(7899) & "c x" & ChrW(7917) & " l" & ChrW(253) & ", ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c ti" & ChrW(7871) & "p theo..."
 
-        ' Đảm bảo header đủ cột Khac (không thêm review cho luồng đã xử lý)
-        EnsureNKCHeader wsNKCExists, False
-        includeReview = False
+            ' Đảm bảo header đủ cột Khac (không thêm review cho luồng đã xử lý)
+            EnsureNKCHeader wsNKCExists, False
+            includeReview = False
 
-        ' Continue with next steps (TH, Pivot, etc.)
-        GoTo SkipProcessing
+            ' Continue with next steps (TH, Pivot, etc.)
+            GoTo SkipProcessing
+        Else
+            InfoToast "Detected existing NKC (non-template). Rebuilding from source..."
+        End If
     End If
 
     ' Normal flow: Process raw data
     On Error Resume Next
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
-    If wsNguon Is Nothing Then Set wsNguon = ActiveSheet
     If wsNguon Is Nothing Then
-        MsgBox "Kh" & ChrW(244) & "ng x" & ChrW(225) & "c " & ChrW(273) & ChrW(7883) & "nh " & ChrW(273) & ChrW(432) & ChrW(7907) & "c sheet ngu" & ChrW(7891) & "n!", vbExclamation
-        Exit Sub
+        If ActiveSheet Is Nothing Then
+            MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' va khong co sheet dang active.", vbExclamation
+            Exit Sub
+        End If
+        If Not ConfirmProceed("Khong tim thay sheet 'So Nhat Ky Chung'. Su dung sheet hien tai '" & ActiveSheet.Name & "' lam nguon?") Then Exit Sub
+        Set wsNguon = ActiveSheet
     End If
     wsNguon.Activate
     Set wb = wsNguon.Parent
@@ -380,6 +417,35 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     End If
     ' Doc du lieu vao array truoc khi tao sheet moi
     arrData = wsNguon.Range("A2:G" & lastRow).Value
+    rowCount = UBound(arrData, 1)
+    ReDim arrMaCT(1 To rowCount)
+    ReDim arrNgay(1 To rowCount)
+    ReDim arrDienGiai(1 To rowCount)
+    ReDim arrTK(1 To rowCount)
+    ReDim arrTK3(1 To rowCount)
+    ReDim arrNo(1 To rowCount)
+    ReDim arrCo(1 To rowCount)
+    ReDim arrKhac(1 To rowCount)
+    ReDim arrMonth(1 To rowCount)
+    ReDim arrKey(1 To rowCount)
+    For i = 1 To rowCount
+        arrMaCT(i) = Trim$(CStr(arrData(i, 1)))
+        arrNgay(i) = arrData(i, 2)
+        arrDienGiai(i) = arrData(i, 3)
+        arrTK(i) = Trim$(CStr(arrData(i, 4)))
+        If IsNumeric(arrData(i, 5)) Then arrNo(i) = CDbl(arrData(i, 5)) Else arrNo(i) = 0#
+        If IsNumeric(arrData(i, 6)) Then arrCo(i) = CDbl(arrData(i, 6)) Else arrCo(i) = 0#
+        arrKhac(i) = arrData(i, 7)
+        If arrTK(i) <> "" Then
+            arrTK3(i) = Left$(arrTK(i), 3)
+        Else
+            arrTK3(i) = ""
+        End If
+        arrMonth(i) = GetMonthValue(arrNgay(i))
+        If arrMaCT(i) <> "" Then
+            arrKey(i) = arrMaCT(i) & "|" & Trim$(CStr(arrNgay(i)))
+        End If
+    Next i
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
@@ -414,9 +480,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     EnsureNKCHeader wsKetQua, True
     Set dictGroup = CreateObject("Scripting.Dictionary")
     ' Nhom du lieu theo MaCT|Ngay
-    For i = 1 To UBound(arrData, 1)
-        If Trim(arrData(i, 1)) <> "" Then
-            key = Trim(arrData(i, 1)) & "|" & Trim(arrData(i, 2))
+    For i = 1 To rowCount
+        If arrMaCT(i) <> "" Then
+            key = arrKey(i)
             If Not dictGroup.Exists(key) Then dictGroup.Add key, New Collection
             dictGroup(key).Add i
         End If
@@ -425,11 +491,12 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     ' Nhom "ban" = co it nhat 1 dong co CA No va Co
     Dim dictDirty As Object
     Set dictDirty = CreateObject("Scripting.Dictionary")
+    Set pairCache = CreateObject("Scripting.Dictionary")
     For Each key In dictGroup.keys
         Dim isDirty As Boolean
         isDirty = False
         For Each r In dictGroup(key)
-            If val(arrData(r, 5)) <> 0 And val(arrData(r, 6)) <> 0 Then
+            If arrNo(r) <> 0 And arrCo(r) <> 0 Then
                 isDirty = True
                 Exit For
             End If
@@ -449,8 +516,8 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         Set dsCoEntries = New Collection
         For Each r In dictGroup(key)
             Dim tienNoGoc As Double, tienCoGoc As Double
-            tienNoGoc = val(arrData(r, 5))
-            tienCoGoc = val(arrData(r, 6))
+            tienNoGoc = arrNo(r)
+            tienCoGoc = arrCo(r)
             If tienNoGoc <> 0 Then
                 dsNoEntries.Add Array(r, tienNoGoc)
             End If
@@ -468,11 +535,90 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         Dim tienNoEntry As Double, tienCoEntry As Double
         Dim tienNo As Double, tienCo As Double
         Dim tienPhanBo As Double
+        Dim absNo As Double, absCo As Double
         Dim tkNo As String, tkCo As String
+        Dim khacValFast As Variant
         Dim needReview As String
         ' Lay trang thai "ban" cua nhom
         needReview = ""
         If dictDirty(key) Then needReview = "X"
+        ' ========== FAST PATH: 1 NO or 1 CO -> phan bo truc tiep (giu dung gia tri am) ==========
+        If dsNoEntries.Count = 1 Or dsCoEntries.Count = 1 Then
+            If dsNoEntries.Count = 1 Then
+                entryNo = dsNoEntries(1)
+                rNo = entryNo(0)
+                tkNo = arrTK(rNo)
+                For idxCo = 1 To dsCoEntries.Count
+                    entryCo = dsCoEntries(idxCo)
+                    rCo = entryCo(0)
+                    tienCoEntry = entryCo(1)
+                    tkCo = arrTK(rCo)
+                    If dongOut > UBound(outputArr, 1) Then
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                    End If
+                    khacValFast = arrKhac(rNo)
+                    If Len(Trim$(khacValFast)) = 0 Then khacValFast = arrKhac(rCo)
+                    outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay hach toan
+                    outputArr(dongOut, 2) = ""               ' Ngay chung tu
+                    outputArr(dongOut, 3) = arrMonth(rNo)
+                    outputArr(dongOut, 4) = arrMaCT(rNo)  ' So hoa don (MaCT)
+                    outputArr(dongOut, 5) = arrDienGiai(rNo)  ' Dien giai
+                    outputArr(dongOut, 6) = arrTK3(rNo)  ' No (3 ky tu dau)
+                    outputArr(dongOut, 7) = arrTK3(rCo)  ' Co (3 ky tu dau)
+                    outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
+                    outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
+                    outputArr(dongOut, 10) = tienCoEntry     ' So tien (giu dung dau)
+                    outputArr(dongOut, 11) = khacValFast     ' Khac
+                    If includeReview Then
+                        If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
+                            outputArr(dongOut, 12) = needReview
+                        Else
+                            outputArr(dongOut, 12) = "X"
+                        End If
+                    End If
+                    usedNo(1) = usedNo(1) + tienCoEntry
+                    usedCo(idxCo) = usedCo(idxCo) + tienCoEntry
+                    dongOut = dongOut + 1
+                Next idxCo
+            Else
+                entryCo = dsCoEntries(1)
+                rCo = entryCo(0)
+                tkCo = arrTK(rCo)
+                For idxNo = 1 To dsNoEntries.Count
+                    entryNo = dsNoEntries(idxNo)
+                    rNo = entryNo(0)
+                    tienNoEntry = entryNo(1)
+                    tkNo = arrTK(rNo)
+                    If dongOut > UBound(outputArr, 1) Then
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                    End If
+                    khacValFast = arrKhac(rNo)
+                    If Len(Trim$(khacValFast)) = 0 Then khacValFast = arrKhac(rCo)
+                    outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay hach toan
+                    outputArr(dongOut, 2) = ""               ' Ngay chung tu
+                    outputArr(dongOut, 3) = arrMonth(rNo)
+                    outputArr(dongOut, 4) = arrMaCT(rNo)  ' So hoa don (MaCT)
+                    outputArr(dongOut, 5) = arrDienGiai(rNo)  ' Dien giai
+                    outputArr(dongOut, 6) = arrTK3(rNo)  ' No (3 ky tu dau)
+                    outputArr(dongOut, 7) = arrTK3(rCo)  ' Co (3 ky tu dau)
+                    outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
+                    outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
+                    outputArr(dongOut, 10) = tienNoEntry     ' So tien (giu dung dau)
+                    outputArr(dongOut, 11) = khacValFast     ' Khac
+                    If includeReview Then
+                        If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
+                            outputArr(dongOut, 12) = needReview
+                        Else
+                            outputArr(dongOut, 12) = "X"
+                        End If
+                    End If
+                    usedNo(idxNo) = usedNo(idxNo) + tienNoEntry
+                    usedCo(1) = usedCo(1) + tienNoEntry
+                    dongOut = dongOut + 1
+                Next idxNo
+            End If
+            GoTo NextGroup
+        End If
         ' ========== PASS 1: Ghep theo QUY TAC KE TOAN ==========
         For idxNo = 1 To dsNoEntries.Count
             entryNo = dsNoEntries(idxNo)
@@ -480,32 +626,32 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
             tienNoEntry = entryNo(1)
             tienNo = tienNoEntry - usedNo(idxNo)
             If Abs(tienNo) < 0.01 Then GoTo NextNoPass1
-            tkNo = CStr(arrData(rNo, 4))
+            tkNo = arrTK(rNo)
             For idxCo = 1 To dsCoEntries.Count
                 entryCo = dsCoEntries(idxCo)
                 rCo = entryCo(0)
                 tienCoEntry = entryCo(1)
                 tienCo = tienCoEntry - usedCo(idxCo)
                 If Abs(tienCo) < 0.01 Then GoTo NextCoPass1
-                tkCo = CStr(arrData(rCo, 4))
-                If Abs(tienNo - tienCo) < 0.01 And IsValidAccountPair(tkNo, tkCo) Then
+                tkCo = arrTK(rCo)
+                If Abs(tienNo - tienCo) < 0.01 And IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
                     If dongOut > UBound(outputArr, 1) Then
                         ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                     End If
                     ' Format mau: NgayHT, NgayCT, Thang, SoHD, DienGiai, No, Co, NoTK, CoTK, SoTien, Khac, CanReview
                     Dim khacVal As Variant
-                    khacVal = arrData(rNo, 7)
-                    If Len(Trim$(khacVal)) = 0 Then khacVal = arrData(rCo, 7)
-                    outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
+                    khacVal = arrKhac(rNo)
+                    If Len(Trim$(khacVal)) = 0 Then khacVal = arrKhac(rCo)
+                    outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay hach toan
                     outputArr(dongOut, 2) = ""               ' Ngay chung tu
                     ' Thang lay theo Ngay hach toan (cot A sheet NKC = col 2 nguon)
-                    outputArr(dongOut, 3) = GetMonthValue(arrData(rNo, 2))
-                    outputArr(dongOut, 4) = arrData(rNo, 1)  ' So hoa don (MaCT)
-                    outputArr(dongOut, 5) = arrData(rNo, 3)  ' Dien giai
-                    outputArr(dongOut, 6) = Left(CStr(arrData(rNo, 4)), 3)  ' No (3 ky tu dau TK No)
-                    outputArr(dongOut, 7) = Left(CStr(arrData(rCo, 4)), 3)  ' Co (3 ky tu dau TK Co)
-                    outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
-                    outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
+                    outputArr(dongOut, 3) = arrMonth(rNo)
+                    outputArr(dongOut, 4) = arrMaCT(rNo)  ' So hoa don (MaCT)
+                    outputArr(dongOut, 5) = arrDienGiai(rNo)  ' Dien giai
+                    outputArr(dongOut, 6) = arrTK3(rNo)  ' No (3 ky tu dau TK No)
+                    outputArr(dongOut, 7) = arrTK3(rCo)  ' Co (3 ky tu dau TK Co)
+                    outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
+                    outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
                     outputArr(dongOut, 11) = khacVal          ' Khac (lay tu G, uu tien dong No, neu trong thi dong Co)
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
@@ -535,17 +681,17 @@ NextNoPass1:
                         ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                     End If
                     Dim khacVal2 As Variant
-                    khacVal2 = arrData(rNo, 7)
-                    If Len(Trim$(khacVal2)) = 0 Then khacVal2 = arrData(rCo, 7)
-                    outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
+                    khacVal2 = arrKhac(rNo)
+                    If Len(Trim$(khacVal2)) = 0 Then khacVal2 = arrKhac(rCo)
+                    outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay hach toan
                     outputArr(dongOut, 2) = ""               ' Ngay chung tu
-                    outputArr(dongOut, 3) = GetMonthValue(arrData(rNo, 2))
-                    outputArr(dongOut, 4) = arrData(rNo, 1)  ' So hoa don (MaCT)
-                    outputArr(dongOut, 5) = arrData(rNo, 3)  ' Dien giai
-                    outputArr(dongOut, 6) = Left(CStr(arrData(rNo, 4)), 3)  ' No (3 ky tu dau)
-                    outputArr(dongOut, 7) = Left(CStr(arrData(rCo, 4)), 3)  ' Co (3 ky tu dau)
-                    outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
-                    outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
+                    outputArr(dongOut, 3) = arrMonth(rNo)
+                    outputArr(dongOut, 4) = arrMaCT(rNo)  ' So hoa don (MaCT)
+                    outputArr(dongOut, 5) = arrDienGiai(rNo)  ' Dien giai
+                    outputArr(dongOut, 6) = arrTK3(rNo)  ' No (3 ky tu dau)
+                    outputArr(dongOut, 7) = arrTK3(rCo)  ' Co (3 ky tu dau)
+                    outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
+                    outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
                     outputArr(dongOut, 11) = khacVal2        ' Khac
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
@@ -583,29 +729,36 @@ NextNoPass2:
                 If bestIdx = 0 Then Exit Do
                 entryCo = dsCoEntries(bestIdx)
                 rCo = entryCo(0)
-                tienPhanBo = Application.Min(Abs(tienNo), Abs(bestCo)) * Sgn(tienNo)
+                absNo = Abs(tienNo)
+                absCo = Abs(bestCo)
+                If absNo < absCo Then
+                    tienPhanBo = absNo
+                Else
+                    tienPhanBo = absCo
+                End If
+                tienPhanBo = tienPhanBo * Sgn(tienNo)
                 If dongOut > UBound(outputArr, 1) Then
                     ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
                 End If
-                tkNo = CStr(arrData(rNo, 4))
-                tkCo = CStr(arrData(rCo, 4))
+                tkNo = arrTK(rNo)
+                tkCo = arrTK(rCo)
                 Dim khacVal3 As Variant
-                khacVal3 = arrData(rNo, 7)
-                If Len(Trim$(khacVal3)) = 0 Then khacVal3 = arrData(rCo, 7)
-                outputArr(dongOut, 1) = arrData(rNo, 2)  ' Ngay hach toan
+                khacVal3 = arrKhac(rNo)
+                If Len(Trim$(khacVal3)) = 0 Then khacVal3 = arrKhac(rCo)
+                outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay hach toan
                 outputArr(dongOut, 2) = ""               ' Ngay chung tu
-                outputArr(dongOut, 3) = GetMonthValue(arrData(rNo, 2))
-                outputArr(dongOut, 4) = arrData(rNo, 1)  ' So hoa don (MaCT)
-                outputArr(dongOut, 5) = arrData(rNo, 3)  ' Dien giai
-                outputArr(dongOut, 6) = Left(CStr(arrData(rNo, 4)), 3)  ' No (3 ky tu dau)
-                outputArr(dongOut, 7) = Left(CStr(arrData(rCo, 4)), 3)  ' Co (3 ky tu dau)
-                outputArr(dongOut, 8) = arrData(rNo, 4)  ' No TK (full)
-                outputArr(dongOut, 9) = arrData(rCo, 4)  ' Co TK (full)
+                outputArr(dongOut, 3) = arrMonth(rNo)
+                outputArr(dongOut, 4) = arrMaCT(rNo)  ' So hoa don (MaCT)
+                outputArr(dongOut, 5) = arrDienGiai(rNo)  ' Dien giai
+                outputArr(dongOut, 6) = arrTK3(rNo)  ' No (3 ky tu dau)
+                outputArr(dongOut, 7) = arrTK3(rCo)  ' Co (3 ky tu dau)
+                outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
+                outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                 outputArr(dongOut, 10) = tienPhanBo      ' So tien
                 outputArr(dongOut, 11) = khacVal3        ' Khac
                 ' Nếu luồng chưa xử lý (includeReview=True) thì cột 12 là review
                 If includeReview Then
-                    If IsValidAccountPair(tkNo, tkCo) Then
+                    If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
                         outputArr(dongOut, 12) = needReview
                     Else
                         outputArr(dongOut, 12) = "X"
@@ -632,13 +785,6 @@ NextGroup:
             Next j
         Next i
         wsKetQua.Range("A3").Resize(dongOut - 1, colCount).Value = finalOut
-        ' Tinh thang tu cot Ngay hach toan (col A) bang MONTH, sau do fix value
-        Dim dataLast As Long
-        dataLast = dongOut + 1 ' hang cuoi co du lieu (bat dau tu row 3)
-        With wsKetQua
-            .Range("C3:C" & dataLast).FormulaR1C1 = "=MONTH(RC[-2])"
-            .Range("C3:C" & dataLast).Value = .Range("C3:C" & dataLast).Value
-        End With
         ' ========== TO VANG CAC DONG CAN REVIEW ==========
         ' Tô vàng cột review (chỉ khi includeReview=True)
         Dim rng As Range
@@ -941,6 +1087,16 @@ End Function
 ' Wrapper cho Ribbon button - Cap nhat dropdown TH
 Public Sub Update_TH_Dropdown_Button(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
+    Dim wsTH As Worksheet, wsTB As Worksheet
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsTH = GetSheet(wb, "TH")
+    Set wsTB = GetSheet(wb, "TB")
+    If wsTH Is Nothing Or wsTB Is Nothing Then
+        MsgBox "Can co sheet TH va TB truoc khi cap nhat dropdown.", vbExclamation
+        Exit Sub
+    End If
     Update_TH_Dropdown
     MsgBox "C" & ChrW(7853) & "p nh" & ChrW(7853) & "t dropdown TH th" & ChrW(224) & "nh c" & ChrW(244) & "ng!", vbInformation
 End Sub
@@ -1441,6 +1597,21 @@ End Function
 ' ==================================================================================
 ' KIEM TRA CAP TAI KHOAN HOP LE THEO QUY TAC KE TOAN VIET NAM
 ' ==================================================================================
+Private Function IsValidAccountPairCached(tkNo As String, tkCo As String, cache As Object) As Boolean
+    Dim key As String
+    If cache Is Nothing Then
+        IsValidAccountPairCached = IsValidAccountPair(tkNo, tkCo)
+        Exit Function
+    End If
+    key = tkNo & "|" & tkCo
+    If cache.Exists(key) Then
+        IsValidAccountPairCached = cache(key)
+    Else
+        IsValidAccountPairCached = IsValidAccountPair(tkNo, tkCo)
+        cache.Add key, IsValidAccountPairCached
+    End If
+End Function
+
 Function IsValidAccountPair(tkNo As String, tkCo As String) As Boolean
     Dim noPrefix As String, coPrefix As String
     noPrefix = Left(tkNo, 3)

@@ -26,8 +26,13 @@ Public Sub Tao_TH(control As IRibbonControl)
     Dim wb As Workbook
     Dim wsAfter As Worksheet
     Dim wsTH As Worksheet
+    Dim wsExisting As Worksheet
     Set wb = ActiveWorkbook
     If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "TH")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'TH' da ton tai. Xoa va tao lai? Du lieu se bi mat.") Then Exit Sub
+    End If
     On Error Resume Next
     Set wsAfter = wb.Worksheets("TB")
     On Error GoTo 0

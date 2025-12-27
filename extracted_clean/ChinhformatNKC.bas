@@ -1,9 +1,26 @@
 Attribute VB_Name = "ChinhformatNKC"
 Option Explicit
 Sub Chinh_Format_NKC()
-    Dim ws As Worksheet
+    Dim wb As Workbook
+        Dim ws As Worksheet
+    Dim wsNkc As Worksheet
     Dim lastRow As Long
     ' L?y sheet dang active (ví d?: NKC)
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    If ActiveSheet Is Nothing Then Exit Sub
+    If StrComp(ActiveSheet.Name, "NKC", vbTextCompare) <> 0 Then
+        Set wsNkc = GetSheet(wb, "NKC")
+        If wsNkc Is Nothing Then
+            MsgBox "Khong tim thay sheet 'NKC'.", vbExclamation
+            Exit Sub
+        End If
+        If ConfirmProceed("Sheet hien tai khong phai 'NKC'. Chuyen sang 'NKC' de format?") Then
+            wsNkc.Activate
+        Else
+            Exit Sub
+        End If
+    End If
     Set ws = ActiveSheet
     ' Xác d?nh dòng cu?i cùng có d? li?u ? c?t A
     lastRow = ws.Cells(ws.Rows.Count, "E").End(xlUp).Row

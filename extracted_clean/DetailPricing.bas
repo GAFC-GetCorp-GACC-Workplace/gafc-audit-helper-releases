@@ -18,6 +18,7 @@ Public Sub detailtopricing(control As IRibbonControl)
 '  - Thêm dòng Total NGAY SAU HEADER
 '  - Dòng Total có thêm c?t M = (Ðon giá Total - Ðon giá g?c)/Ðon giá g?c
 '=================================================================
+    Dim wb As Workbook
     Dim wsDetail As Worksheet, wsTarget As Worksheet
     Dim lastRowDetail As Long, lastRowTarget As Long
     Dim detailData As Variant, targetData As Variant
@@ -25,11 +26,18 @@ Public Sub detailtopricing(control As IRibbonControl)
     Dim codeTarget As String
     Dim qtyNeeded As Double, qtyAccum As Double
     Dim resultRow As Long
+    Dim clearTo As Long
     Dim filterOn As Boolean
     Dim dict As Object
     Dim items As Collection
     Dim rec As Variant
     Dim calcMode As XlCalculation
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsDetail = RequireSheet(wb, "D550.1.1 Detail Input", "Chua co sheet 'D550.1.1 Detail Input'. Hay chay Tao detail truoc.")
+    If wsDetail Is Nothing Then Exit Sub
+    Set wsTarget = RequireSheet(wb, "D550.1 Pricing Testing RW-M", "Chua co sheet 'D550.1 Pricing Testing RW-M'. Hay chay Tao pricing truoc.")
+    If wsTarget Is Nothing Then Exit Sub
     On Error GoTo CleanFail
     '--- Tang t?c Application ---
     With Application
@@ -39,8 +47,8 @@ Public Sub detailtopricing(control As IRibbonControl)
         .Calculation = xlCalculationManual
     End With
     '--- Gán sheet ---
-    Set wsDetail = Worksheets("D550.1.1 Detail Input")
-    Set wsTarget = Worksheets("D550.1 Pricing Testing RW-M")
+    Set wsDetail = wb.Worksheets("D550.1.1 Detail Input")
+    Set wsTarget = wb.Worksheets("D550.1 Pricing Testing RW-M")
     '--- T?t filter n?u có ---
     filterOn = wsDetail.AutoFilterMode
     If filterOn Then wsDetail.AutoFilterMode = False
@@ -51,7 +59,9 @@ Public Sub detailtopricing(control As IRibbonControl)
     detailData = wsDetail.Range("A3:Q" & lastRowDetail).Value2
     targetData = wsTarget.Range("A3:G" & lastRowTarget).Value2
     '--- Xoá d? li?u cu ---
-    wsTarget.Range("A3:M" & wsTarget.Rows.Count).ClearContents
+    clearTo = lastRowTarget
+    If clearTo < 3 Then clearTo = 3
+    wsTarget.Range("A3:M" & clearTo).ClearContents
     resultRow = 3
     '==============================================================
     ' 1) T?o index các dòng Detail theo Mã hàng (quét ngu?c)

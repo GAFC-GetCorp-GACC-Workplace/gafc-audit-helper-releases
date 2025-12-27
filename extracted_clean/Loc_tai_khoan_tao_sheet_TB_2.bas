@@ -2,15 +2,39 @@ Attribute VB_Name = "Loc_tai_khoan_tao_sheet_TB_2"
 Option Explicit
 Public Sub Xuly(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
-    ' ? Tang t?c
-    Application.ScreenUpdating = False
-    Application.Calculation = xlCalculationManual
-    Application.EnableEvents = False
+    Dim wb As Workbook
     Dim wsSrc As Worksheet, wsTB As Worksheet
+    Dim wsXuLy As Worksheet
+    Dim wsExistingTB As Worksheet
     Dim dict As Object: Set dict = CreateObject("Scripting.Dictionary")
     Dim specialDict As Object: Set specialDict = CreateObject("Scripting.Dictionary")
     Dim allTKs As Object: Set allTKs = CreateObject("Scripting.Dictionary")
     Dim prefixSpecialInData As Object: Set prefixSpecialInData = CreateObject("Scripting.Dictionary")
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsXuLy = GetSheet(wb, "Xu_ly")
+    If ActiveSheet Is Nothing Then Exit Sub
+    Set wsExistingTB = GetSheet(wb, "TB")
+    If Not wsExistingTB Is Nothing Then
+        If Not ConfirmProceed("Sheet 'TB' da ton tai. Xoa va tao lai? Du lieu se bi mat.") Then Exit Sub
+    End If
+    If Not wsXuLy Is Nothing Then
+        If StrComp(ActiveSheet.Name, "Xu_ly", vbTextCompare) <> 0 Then
+            If ConfirmProceed("Macro nay nen chay tren sheet 'Xu_ly'. Chuyen sang sheet nay khong?") Then
+                wsXuLy.Activate
+            ElseIf Not ConfirmProceed("Ban dang chay tren sheet '" & ActiveSheet.Name & "'. Tiep tuc?") Then
+                Exit Sub
+            End If
+        End If
+    Else
+        If Not ConfirmProceed("Khong tim thay sheet 'Xu_ly'. Macro se chay tren sheet '" & ActiveSheet.Name & "'. Tiep tuc?") Then
+            Exit Sub
+        End If
+    End If
+    ' ? Tang t?c
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.EnableEvents = False
     Set wsSrc = ActiveSheet
     Dim lastRow As Long: lastRow = wsSrc.Cells(wsSrc.Rows.Count, 1).End(xlUp).Row
     Dim i As Long
@@ -63,8 +87,7 @@ Public Sub Xuly(control As IRibbonControl)
     Next tkFull
     ' ? Xóa sheet TB n?u dã có
     Application.DisplayAlerts = False
-    On Error Resume Next: Worksheets("TB").Delete
-    On Error GoTo 0
+    If Not wsExistingTB Is Nothing Then wsExistingTB.Delete
     Application.DisplayAlerts = True
     ' ? T?o sheet TB m?i
     Set wsTB = Worksheets.Add

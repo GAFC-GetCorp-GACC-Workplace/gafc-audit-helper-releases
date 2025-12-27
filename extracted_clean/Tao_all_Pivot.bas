@@ -4,6 +4,16 @@ Public Sub Tao_al_pivot(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim tStart As Double
     Dim calcMode As XlCalculation
+    Dim wb As Workbook
+    Dim wsNkc As Worksheet
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsNkc = GetSheet(wb, "NKC")
+    If wsNkc Is Nothing Then
+        MsgBox "Khong tim thay sheet 'NKC'. Hay tao/ xu ly NKC truoc.", vbExclamation
+        Exit Sub
+    End If
+    wsNkc.Activate
     On Error GoTo ErrHandler
     tStart = Timer
     Application.ScreenUpdating = False

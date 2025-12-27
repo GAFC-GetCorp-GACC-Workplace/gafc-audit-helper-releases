@@ -2,6 +2,7 @@ Attribute VB_Name = "Tao_checkBoxKQKD"
 Option Explicit
 Public Sub Check_box_kqkd(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    If Not ConfirmActiveSheetRisk("Du lieu se bi ghi de o cot J:N va an cot Z.") Then Exit Sub
     Dim ws As Worksheet
     Set ws = ActiveSheet
     ' Cot bat dau va cac cot su dung

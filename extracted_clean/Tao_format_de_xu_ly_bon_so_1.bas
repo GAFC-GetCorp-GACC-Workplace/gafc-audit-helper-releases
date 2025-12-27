@@ -5,7 +5,18 @@ Public Sub TaoTB(control As IRibbonControl)
     Dim ws As Worksheet
     Dim wsOld As Worksheet
     Dim wb As Workbook
+    Dim wsExisting As Worksheet
+    Dim prevAlerts As Boolean
     Set wb = ActiveWorkbook ' ?? Làm vi?c v?i file dang m?
+    If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "Xu_ly")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'Xu_ly' da ton tai. Xoa va tao lai? Du lieu se bi mat.") Then Exit Sub
+        prevAlerts = Application.DisplayAlerts
+        Application.DisplayAlerts = False
+        wsExisting.Delete
+        Application.DisplayAlerts = prevAlerts
+    End If
     ' T?o m?i sheet "TB"
     Set ws = wb.Sheets.Add(After:=wb.Sheets(wb.Sheets.Count))
     ws.Name = "Xu_ly"

@@ -3,12 +3,20 @@ Option Explicit
 Public Sub taopricing(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
-    On Error Resume Next
+    Dim wb As Workbook
+    Dim wsExisting As Worksheet
+    Dim prevAlerts As Boolean
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "D550.1 Pricing Testing RW-M")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'D550.1 Pricing Testing RW-M' da ton tai. Xoa va tao lai?") Then Exit Sub
+    End If
+    prevAlerts = Application.DisplayAlerts
     Application.DisplayAlerts = False
-    Worksheets("D550.1 Pricing Testing RW-M").Delete
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-    Set ws = Worksheets.Add
+    If Not wsExisting Is Nothing Then wsExisting.Delete
+    Application.DisplayAlerts = prevAlerts
+    Set ws = wb.Worksheets.Add
     ws.Name = "D550.1 Pricing Testing RW-M"
     ' Dòng 1: G?p H1:L1 ghi "Hóa don cu?i cùng"
     With ws.Range("H1:L1")

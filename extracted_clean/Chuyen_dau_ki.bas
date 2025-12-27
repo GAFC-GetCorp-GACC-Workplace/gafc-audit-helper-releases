@@ -4,6 +4,7 @@ Public Sub chuyendauki(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
     Set ws = ActiveSheet
+    If Not ConfirmActiveSheetRisk("Hay dam bao dung sheet mau truoc khi chay.") Then Exit Sub
     ' --- Ngu?i dùng nh?p thông tin ---
     Dim colFrom As String, colTo As String, colClear As String
     colFrom = UCase(InputBox("Nhap cot cuoi ki(nhap - neu chi muon xoa data):", "Cot cuoi ki"))

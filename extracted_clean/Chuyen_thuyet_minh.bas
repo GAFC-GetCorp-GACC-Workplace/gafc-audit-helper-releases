@@ -7,6 +7,7 @@ Public Sub chuyen_tm11(control As IRibbonControl)
     Dim label As String
     Dim f As String
     Set ws = ActiveSheet ' Dùng sheet hi?n t?i
+    If Not ConfirmActiveSheetRisk("Hay dam bao dung sheet truoc khi chay.") Then Exit Sub
     ' Nh?p vùng dòng x? lý
     firstRow = Application.InputBox("Nh?p s? b?t d?u", Type:=1)
     If firstRow = 0 Then Exit Sub

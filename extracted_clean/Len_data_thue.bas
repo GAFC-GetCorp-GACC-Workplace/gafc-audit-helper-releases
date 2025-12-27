@@ -51,6 +51,25 @@ End Sub
 ' Sub chính v?i t?i uu và x? lý l?i
 Public Sub tra_cuu_thue(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
+    Dim wsGTGT As Worksheet, wsTNCN As Worksheet, wsNTNN As Worksheet
+    Dim missing As String
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsGTGT = GetSheet(wb, "GTGT")
+    Set wsTNCN = GetSheet(wb, "TNCN")
+    Set wsNTNN = GetSheet(wb, "NhaThauNN")
+    If wsGTGT Is Nothing And wsTNCN Is Nothing And wsNTNN Is Nothing Then
+        MsgBox "Chua co sheet mau thue (GTGT/TNCN/NhaThauNN). Hay chay 'Tra_cuu' de tao mau truoc.", vbExclamation
+        Exit Sub
+    End If
+    If wsGTGT Is Nothing Then missing = missing & "GTGT, "
+    If wsTNCN Is Nothing Then missing = missing & "TNCN, "
+    If wsNTNN Is Nothing Then missing = missing & "NhaThauNN, "
+    If missing <> "" Then
+        missing = Left$(missing, Len(missing) - 2)
+        If Not ConfirmProceed("Thieu sheet: " & missing & ". Du lieu loai do se bi bo qua. Tiep tuc?") Then Exit Sub
+    End If
     Dim xmlDoc As Object
     Dim filePath As Variant, fileList As Collection, pickedFiles As Variant
     Dim folderPath As String
@@ -313,6 +332,7 @@ End Function
 ' Sub Xoa_data v?i Unicode
 Public Sub Xoa_data(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    If Not ConfirmActiveSheetRisk("Du lieu se bi xoa tu dong 5 den cuoi.") Then Exit Sub
     Dim ws As Worksheet
     Dim lastRow As Long
     Set ws = ActiveSheet

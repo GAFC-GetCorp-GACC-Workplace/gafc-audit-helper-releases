@@ -3,12 +3,20 @@ Option Explicit
 Public Sub taodetail(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
-    On Error Resume Next
+    Dim wb As Workbook
+    Dim wsExisting As Worksheet
+    Dim prevAlerts As Boolean
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "D550.1.1 Detail Input")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'D550.1.1 Detail Input' da ton tai. Xoa va tao lai?") Then Exit Sub
+    End If
+    prevAlerts = Application.DisplayAlerts
     Application.DisplayAlerts = False
-    Worksheets("D550.1.1 Detail Input").Delete
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-    Set ws = ActiveWorkbook.Sheets.Add
+    If Not wsExisting Is Nothing Then wsExisting.Delete
+    Application.DisplayAlerts = prevAlerts
+    Set ws = wb.Sheets.Add
     ws.Name = "D550.1.1 Detail Input"
     ' G?p dòng 1
     ws.Range("A1:I1").Merge

@@ -2,6 +2,7 @@ Attribute VB_Name = "chuyen_CF"
 Option Explicit
 Public Sub Chuyencf(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    If Not ConfirmActiveSheetRisk("Vui long dam bao dung sheet va dung mau. Du lieu se bi ghi de o vung Y8:AA48.") Then Exit Sub
 '
 ' chuyen_CF Macro
 '

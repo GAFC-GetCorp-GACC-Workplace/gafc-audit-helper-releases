@@ -2,13 +2,17 @@ Attribute VB_Name = "Tra_cuu_tai_khoan"
 Option Explicit
 Public Sub Tracode(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
+    Dim wb As Workbook
     Dim ws As Worksheet
     Dim dict As Object
     Dim lastRow As Long, i As Long
     Dim inputArr As Variant, outputArr As Variant
     Dim tempVal As Variant
     Dim tk As String
-    Set ws = Worksheets("TB")
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set ws = RequireSheet(wb, "TB", "Chua co sheet 'TB'. Hay tao TB truoc.")
+    If ws Is Nothing Then Exit Sub
     Set dict = CreateObject("Scripting.Dictionary")
     ' ? B?ng tra mã
     dict.Add "111", Array("111", "")

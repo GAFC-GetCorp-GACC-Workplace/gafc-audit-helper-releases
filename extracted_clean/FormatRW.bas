@@ -3,12 +3,20 @@ Option Explicit
 Public Sub taorw(control As IRibbonControl)
     If Not LicenseGate() Then Exit Sub
     Dim ws As Worksheet
-    On Error Resume Next
+    Dim wb As Workbook
+    Dim wsExisting As Worksheet
+    Dim prevAlerts As Boolean
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then Exit Sub
+    Set wsExisting = GetSheet(wb, "R W")
+    If Not wsExisting Is Nothing Then
+        If Not ConfirmProceed("Sheet 'R W' da ton tai. Xoa va tao lai?") Then Exit Sub
+    End If
+    prevAlerts = Application.DisplayAlerts
     Application.DisplayAlerts = False
-    Worksheets("R W").Delete ' Xóa n?u có s?n
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-    Set ws = ActiveWorkbook.Sheets.Add
+    If Not wsExisting Is Nothing Then wsExisting.Delete
+    Application.DisplayAlerts = prevAlerts
+    Set ws = wb.Sheets.Add
     ws.Name = "R W"
     ' G?p dòng tiêu d?
     ws.Range("A1:G1").Merge
