@@ -367,10 +367,16 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim wsNKCExists As Worksheet
     Dim isTemplateNKC As Boolean
     Dim includeReview As Boolean
+    Dim oldCalc As XlCalculation
+    Dim oldScreen As Boolean
+    Dim oldEvents As Boolean
     ' Mac dinh: xu ly du lieu tho -> co cot Can review
     includeReview = True
 
     Set wb = ActiveWorkbook
+    oldScreen = Application.ScreenUpdating
+    oldCalc = Application.Calculation
+    oldEvents = Application.EnableEvents
 
     ' Check if NKC sheet already exists (user used template)
     On Error Resume Next
@@ -819,10 +825,7 @@ NextGroup:
     For Each key In dictDirty.keys
         If dictDirty(key) Then countDirty = countDirty + 1
     Next key
-    ' Bat lai cac tinh nang truoc khi tinh TB
-    Application.ScreenUpdating = True
-    Application.Calculation = xlCalculationAutomatic
-    Application.EnableEvents = True
+    ' Keep app settings off until all steps finish for speed
     ' Hien thi ket qua NKC truoc (toast tu tat)
     InfoToast "X" & ChrW(7917) & " l" & ChrW(253) & " NKC ho" & ChrW(224) & "n th" & ChrW(224) & "nh! Output: " & (dongOut - 1) & _
               "; Nh" & ChrW(243) & "m b" & ChrW(7845) & "t to" & ChrW(224) & "n: " & countDirty & _
@@ -915,6 +918,9 @@ SkipProcessing:
     ' Additional steps after processing (or skipping)
     MsgBox ChrW(272) & ChrW(227) & " ho" & ChrW(224) & "n t" & ChrW(7845) & "t!" & vbCrLf & _
            "C" & ChrW(243) & " th" & ChrW(7875) & " ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c kh" & ChrW(225) & "c n" & ChrW(7871) & "u c" & ChrW(7847) & "n.", vbInformation
+    Application.ScreenUpdating = oldScreen
+    Application.Calculation = oldCalc
+    Application.EnableEvents = oldEvents
 End Sub
 Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     Dim wsTB As Worksheet, wsSource As Worksheet
@@ -926,7 +932,9 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     Dim tkSource As String
     Dim useLeftMatch As Boolean
     Dim warnNonNum As String
+    Dim oldCalc As XlCalculation
     On Error GoTo ErrorHandler
+    oldCalc = Application.Calculation
     Set wb = wsNKC.Parent
     Set wsTB = wb.Sheets("TB")
     lastRowNKC = wsNKC.Cells(wsNKC.Rows.Count, "A").End(xlUp).Row
@@ -1003,8 +1011,8 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
             End If
         End If
     Next r
-    Application.Calculation = xlCalculationAutomatic
     wsTB.Calculate
+    Application.Calculation = oldCalc
     ' To mau dong theo tieu chi
     For r = 4 To lastRowTB
         If wsTB.Cells(r, 3).Value <> "" Then
@@ -1037,6 +1045,7 @@ Private Function Auto_Tinh_TB(wsNKC As Worksheet) As String
     Auto_Tinh_TB = ""
     Exit Function
 ErrorHandler:
+    Application.Calculation = oldCalc
     MsgBox "L" & ChrW(7894) & "I: Kh" & ChrW(244) & "ng th" & ChrW(7875) & " t" & ChrW(237) & "nh to" & ChrW(225) & "n TB!" & vbCrLf & vbCrLf & _
            "Chi ti" & ChrW(7871) & "t: " & Err.Description, vbCritical
     Auto_Tinh_TB = ""
@@ -2015,7 +2024,9 @@ Public Sub Tinh_Toan_TB(control As IRibbonControl)
     Dim dictSourceTK As Object
     Dim tkSource As String
     Dim useLeftMatch As Boolean
+    Dim oldCalc As XlCalculation
     Set wb = ActiveWorkbook
+    oldCalc = Application.Calculation
     ' Kiem tra sheet NKC ton tai
     If Not WorksheetExists("NKC", wb) Then
         MsgBox "Sheet NKC ch" & ChrW(432) & "a t" & ChrW(7891) & "n t" & ChrW(7841) & "i! H" & ChrW(227) & "y ch" & ChrW(7841) & "y Xu_Ly_NKC tr" & ChrW(432) & ChrW(7899) & "c.", vbExclamation
@@ -2096,8 +2107,8 @@ Public Sub Tinh_Toan_TB(control As IRibbonControl)
             End If
         End If
     Next r
-    Application.Calculation = xlCalculationAutomatic
     wsTB.Calculate
+    Application.Calculation = oldCalc
     ' To mau dong theo tieu chi
     For r = 4 To lastRowTB
         If wsTB.Cells(r, 3).Value <> "" Then
