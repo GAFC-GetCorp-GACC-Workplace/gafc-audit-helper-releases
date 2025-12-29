@@ -21,7 +21,7 @@ End Type
 ' Get version from XLAM custom properties (set during build)
 Private Function CURRENT_VERSION() As String
     ' Always return hardcoded version since CustomDocumentProperties may be outdated
-    CURRENT_VERSION = "1.0.15"
+    CURRENT_VERSION = "1.0.16"
 End Function
 
 ' Main entry point - call from Workbook_Open

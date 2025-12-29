@@ -129,17 +129,12 @@
 				</group>
 				<group
 					id="Group8"
-					label="Tạo Pivot">
+					label="Bổ trợ">
 					<button
 						id="Button25"
-						imageMso="AdpDiagramAddTable"
-						label="Tạo format NKC"
-						onAction="Tao_for_NKC"/>
-					<button
-						id="Button26"
-						imageMso="ChartGridlines"
-						label="Tạo pivot"
-						onAction="Tao_al_pivot"/>
+						imageMso="ReviewNewComment"
+						label="Sửa comment"
+						onAction="FixCMT_Ribbon"/>
 				</group>
 				<group
 					id="Group9"

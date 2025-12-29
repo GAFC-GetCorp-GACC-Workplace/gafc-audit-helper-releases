@@ -33,6 +33,8 @@ MODULE_DIR = BASE_DIR / "extracted_clean"
 CONFIG_FILE = BASE_DIR / "build_config.dat"
 KEY_FILE = BASE_DIR / ".build_key"
 PASSWORD_FILE = BASE_DIR / "vba_password.txt"
+CUSTOM_UI_PATH = BASE_DIR / "extracted" / "customUI" / "customUI14.xml"
+CUSTOM_UI_PART = "customUI/customUI14.xml"
 
 VBEXT_CT_STD_MODULE = 1
 VBEXT_CT_CLASS_MODULE = 2
@@ -361,6 +363,42 @@ def make_vba_unviewable(xlam_path):
         return False
 
 
+def inject_custom_ui(xlam_path):
+    """Replace customUI/customUI14.xml in the XLAM with extracted version."""
+    if not CUSTOM_UI_PATH.exists():
+        print(f"Warning: customUI14.xml not found: {CUSTOM_UI_PATH}")
+        return False
+
+    import zipfile
+
+    temp_path = xlam_path.with_name(xlam_path.name + ".tmp")
+    try:
+        custom_data = CUSTOM_UI_PATH.read_bytes()
+        replaced = False
+        with zipfile.ZipFile(xlam_path, "r") as zin:
+            with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    if item.filename == CUSTOM_UI_PART:
+                        zout.writestr(item, custom_data)
+                        replaced = True
+                    else:
+                        zout.writestr(item, zin.read(item.filename))
+                if not replaced:
+                    zout.writestr(CUSTOM_UI_PART, custom_data)
+
+        temp_path.replace(xlam_path)
+        print("Applied customUI14.xml to output add-in")
+        return True
+    except Exception as e:
+        print(f"Warning: Could not apply customUI14.xml: {e}")
+        try:
+            if temp_path.exists():
+                temp_path.unlink()
+        except Exception:
+            pass
+        return False
+
+
 def copy_sources(output_path):
     if not SOURCE_XLAM.exists():
         print(f"ERROR: source xlam not found: {SOURCE_XLAM}")
@@ -476,7 +514,7 @@ def rebuild(dev_mode=False, make_unviewable=False):
                     # Find: CURRENT_VERSION = "1.0.3"  and replace with new version
                     import json
                     manifest_path_temp = BASE_DIR / "releases" / "audit_tool.json"
-                    current_ver = "1.0.3"
+                    current_ver = "1.0.16"
                     if manifest_path_temp.exists():
                         try:
                             with open(manifest_path_temp, 'r', encoding='utf-8') as f_temp:
@@ -608,6 +646,8 @@ def rebuild(dev_mode=False, make_unviewable=False):
         if not lock_success and make_unviewable and not dev_mode and password:
             print("Falling back to unviewable method...")
             unviewable_applied = make_vba_unviewable(output_xlam)
+
+        inject_custom_ui(output_xlam)
 
         print("")
         print("=" * 80)

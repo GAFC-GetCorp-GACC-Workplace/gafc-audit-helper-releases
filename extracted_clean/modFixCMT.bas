@@ -8,3 +8,7 @@ Public Sub FixCMT()
         o.Shape.Top = o.Parent.Top
     Next
 End Sub
+
+Public Sub FixCMT_Ribbon(control As IRibbonControl)
+    FixCMT
+End Sub
