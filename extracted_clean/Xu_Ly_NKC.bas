@@ -122,7 +122,7 @@ Private Function NormalizeHeaderText(ByVal s As String) As String
     s = Replace$(s, "ế", "e")
     s = Replace$(s, "ề", "e")
     s = Replace$(s, "ể", "e")
-    s = Replace$(s, "�
+    s = Replace$(s, "�
 ", "e")
     s = Replace$(s, "ệ", "e")
     s = Replace$(s, "í", "i")
@@ -383,30 +383,32 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Set wsNKCExists = wb.Sheets("NKC")
     On Error GoTo 0
 
-    If Not wsNKCExists Is Nothing Then
-        ' Skip only if this is a manual template NKC
-        isTemplateNKC = (InStr(1, UCase$(CStr(wsNKCExists.Cells(1, 1).Value)), "TEMPLATE NKC") > 0)
-        If isTemplateNKC Then
-            ' NKC sheet exists (template) - skip processing, go straight to next steps
-            InfoToast "Ph" & ChrW(225) & "t hi" & ChrW(7879) & "n sheet NKC " & ChrW(273) & ChrW(227) & " t" & ChrW(7891) & "n t" & ChrW(7841) & "i! " & _
-                     "B" & ChrW(7887) & " qua b" & ChrW(432) & ChrW(7899) & "c x" & ChrW(7917) & " l" & ChrW(253) & ", ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c ti" & ChrW(7871) & "p theo..."
-
-            ' Đảm bảo header đủ cột Khac (không thêm review cho luồng đã xử lý)
-            EnsureNKCHeader wsNKCExists, False
-            includeReview = False
-
-            ' Continue with next steps (TH, Pivot, etc.)
-            GoTo SkipProcessing
-        Else
-            InfoToast "Detected existing NKC (non-template). Rebuilding from source..."
-        End If
-    End If
-
-    ' Normal flow: Process raw data
+    ' Check if "So Nhat Ky Chung" source sheet exists
     On Error Resume Next
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
-    If wsNguon Is Nothing Then
+
+    ' If NKC already exists AND no source sheet -> Skip processing (template workflow)
+    If Not wsNKCExists Is Nothing And wsNguon Is Nothing Then
+        InfoToast "Sheet NKC da ton tai va khong co 'So Nhat Ky Chung'. Bo qua xu ly."
+        EnsureNKCHeader wsNKCExists, False
+        includeReview = False
+        GoTo SkipProcessing
+    End If
+
+    ' If NKC exists AND source sheet exists -> Ask user what to do
+    If Not wsNKCExists Is Nothing And Not wsNguon Is Nothing Then
+        If Not ConfirmProceed("Sheet 'NKC' da ton tai. Xoa va tao lai tu 'So Nhat Ky Chung'?") Then
+            InfoToast "Giu nguyen sheet NKC hien co. Bo qua xu ly."
+            EnsureNKCHeader wsNKCExists, False
+            includeReview = False
+            GoTo SkipProcessing
+        End If
+        ' User confirmed -> will rebuild NKC from source
+    End If
+
+    ' If no NKC and no source sheet -> Ask to use ActiveSheet
+    If wsNKCExists Is Nothing And wsNguon Is Nothing Then
         If ActiveSheet Is Nothing Then
             MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' va khong co sheet dang active.", vbExclamation
             Exit Sub
