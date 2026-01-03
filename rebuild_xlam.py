@@ -514,7 +514,7 @@ def rebuild(dev_mode=False, make_unviewable=False):
                     # Find: CURRENT_VERSION = "1.0.3"  and replace with new version
                     import json
                     manifest_path_temp = BASE_DIR / "releases" / "audit_tool.json"
-                    current_ver = "1.0.16"
+                    current_ver = "1.0.17"
                     if manifest_path_temp.exists():
                         try:
                             with open(manifest_path_temp, 'r', encoding='utf-8') as f_temp:
@@ -564,7 +564,7 @@ def rebuild(dev_mode=False, make_unviewable=False):
                 import json
                 import re
                 manifest_path_all = BASE_DIR / "releases" / "audit_tool.json"
-                current_ver_all = "1.0.3"
+                current_ver_all = "1.0.17"
                 if manifest_path_all.exists():
                     try:
                         with open(manifest_path_all, 'r', encoding='utf-8') as f_all:
