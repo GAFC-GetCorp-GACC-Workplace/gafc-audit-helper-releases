@@ -573,9 +573,14 @@ def rebuild(dev_mode=False, make_unviewable=False):
                     except:
                         pass
 
-                # Replace patterns like: CURRENT_VERSION = "1.0.3"  ' comment
+                # Replace patterns like: CURRENT_VERSION = "1.0.3" or currentVer = "1.0.18"
                 content = re.sub(
                     r'(CURRENT_VERSION\s*=\s*)"[\d\.]+"',
+                    rf'\1"{current_ver_all}"',
+                    content
+                )
+                content = re.sub(
+                    r'(currentVer\s*=\s*)"[\d\.]+"',
                     rf'\1"{current_ver_all}"',
                     content
                 )
