@@ -19,7 +19,7 @@ Public Sub OnShowAbout(control As IRibbonControl)
 
     ' Final fallback
     If Err.Number <> 0 Or Len(currentVer) = 0 Then
-        currentVer = "1.0.17"
+        currentVer = "1.0.18"
     End If
     On Error GoTo 0
 
