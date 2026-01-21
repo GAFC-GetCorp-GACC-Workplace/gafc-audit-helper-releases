@@ -439,14 +439,14 @@ def lock_vba_project(vb_proj, password):
 
 def make_vba_unviewable(xlam_path):
     """
-    Make VBA project completely unviewable by modifying binary structure.
-    This changes 'DPB=' to 'DPx=' in the vbaProject.bin file, which makes
-    the project show 'Project is unviewable' instead of password prompt.
+    Make VBA project completely unviewable by replacing CMG/DPB/GC values with F's.
+    IMPORTANT: Must keep EXACT same length to avoid corrupting binary structure.
     """
     import zipfile
     import tempfile
     import shutil
     from pathlib import Path
+    import re
 
     try:
         print("Making VBA project UNVIEWABLE...")
@@ -472,55 +472,57 @@ def make_vba_unviewable(xlam_path):
 
         # Read binary content
         with open(vba_project_path, 'rb') as f:
-            content = bytearray(f.read())
+            content = f.read()
 
-        # CORRECT Method: Set CMG and GC to empty or corrupt with F's
-        # This makes Excel unable to decrypt the protection state
-        # Reference: MS-OVBA spec, EvilClippy tool, research by Carrie Roberts
         modified = False
+        new_content = content
 
-        # Find CMG= and replace its value with F's (must be even number of F's)
-        import re
-
-        # Pattern: CMG="<hex_value>"
-        cmg_pattern = rb'CMG="([0-9A-Fa-f]*)"'
-        match = re.search(cmg_pattern, content)
-        if match:
-            old_value = match.group(1)
-            # Replace with even number of F's >= original length
-            new_value = b'F' * max(len(old_value), 28)
-            content = re.sub(cmg_pattern, b'CMG="' + new_value + b'"', content)
+        # Replace CMG value with F's - KEEP EXACT SAME LENGTH
+        cmg_match = re.search(rb'CMG="([0-9A-Fa-f]+)"', new_content)
+        if cmg_match:
+            old_val = cmg_match.group(1)
+            new_val = b'F' * len(old_val)  # SAME LENGTH
+            new_content = new_content[:cmg_match.start(1)] + new_val + new_content[cmg_match.end(1):]
             modified = True
-            print(f"Corrupted CMG value ({len(old_value)} -> {len(new_value)} F's)")
+            print(f"  CMG: replaced {len(old_val)} chars with F's")
 
-        # Pattern: GC="<hex_value>"
-        gc_pattern = rb'GC="([0-9A-Fa-f]*)"'
-        match = re.search(gc_pattern, content)
-        if match:
-            old_value = match.group(1)
-            new_value = b'F' * max(len(old_value), 12)
-            content = re.sub(gc_pattern, b'GC="' + new_value + b'"', content)
+        # Replace DPB value with F's - KEEP EXACT SAME LENGTH
+        dpb_match = re.search(rb'DPB="([0-9A-Fa-f]+)"', new_content)
+        if dpb_match:
+            old_val = dpb_match.group(1)
+            new_val = b'F' * len(old_val)  # SAME LENGTH
+            new_content = new_content[:dpb_match.start(1)] + new_val + new_content[dpb_match.end(1):]
             modified = True
-            print(f"Corrupted GC value ({len(old_value)} -> {len(new_value)} F's)")
+            print(f"  DPB: replaced {len(old_val)} chars with F's")
 
-        # Also corrupt DPB for extra protection
-        dpb_pattern = rb'DPB="([0-9A-Fa-f]*)"'
-        match = re.search(dpb_pattern, content)
-        if match:
-            old_value = match.group(1)
-            new_value = b'F' * max(len(old_value), 28)
-            content = re.sub(dpb_pattern, b'DPB="' + new_value + b'"', content)
+        # Replace GC value with F's - KEEP EXACT SAME LENGTH
+        gc_match = re.search(rb'GC="([0-9A-Fa-f]+)"', new_content)
+        if gc_match:
+            old_val = gc_match.group(1)
+            new_val = b'F' * len(old_val)  # SAME LENGTH
+            new_content = new_content[:gc_match.start(1)] + new_val + new_content[gc_match.end(1):]
             modified = True
-            print(f"Corrupted DPB value ({len(old_value)} -> {len(new_value)} F's)")
+            print(f"  GC: replaced {len(old_val)} chars with F's")
 
         if not modified:
             print("Warning: Could not find CMG/GC/DPB markers to modify")
+            shutil.rmtree(temp_dir)
+            backup_path.unlink()
+            return False
+
+        # Verify length unchanged
+        if len(new_content) != len(content):
+            print(f"ERROR: Content length changed! {len(content)} -> {len(new_content)}")
+            shutil.rmtree(temp_dir)
+            shutil.copy2(backup_path, xlam_path)
+            backup_path.unlink()
+            return False
 
         # Write modified content
         with open(vba_project_path, 'wb') as f:
-            f.write(content)
+            f.write(new_content)
 
-        # Repack XLAM
+        # Repack XLAM - preserve original compression
         xlam_path.unlink()
         with zipfile.ZipFile(xlam_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
             for file_path in temp_dir.rglob('*'):
@@ -532,7 +534,7 @@ def make_vba_unviewable(xlam_path):
         shutil.rmtree(temp_dir)
         backup_path.unlink()
 
-        print("[OK] VBA Project is now UNVIEWABLE (shows 'Project is unviewable')")
+        print("[OK] VBA Project is now UNVIEWABLE")
         return True
 
     except Exception as e:
@@ -948,7 +950,7 @@ Examples:
                         help='After locking, patch VBA project to be unviewable (harder to reverse)')
     parser.add_argument('--no-unviewable', dest='unviewable', action='store_false',
                         help='Skip unviewable patch (keep normal password prompt)')
-    parser.set_defaults(unviewable=True)
+    parser.set_defaults(unviewable=True)  # Apply unviewable protection by default
     args = parser.parse_args()
 
     rebuild(dev_mode=args.dev, make_unviewable=args.unviewable)
