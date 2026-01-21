@@ -28,9 +28,10 @@ fi
 
 echo "=== Releasing version $VERSION ==="
 
-# 1. Update manifest
+# 1. Update manifest (version + download_url)
 echo "1. Updating manifest..."
 sed -i "s/\"latest\": \".*\"/\"latest\": \"$VERSION\"/" releases/audit_tool.json
+sed -i "s|\"download_url\": \".*\"|\"download_url\": \"https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/download/v${VERSION}/gafc_audit_helper_new.xlam\"|" releases/audit_tool.json
 
 # 2. Commit manifest change (skip if unchanged)
 if git diff --quiet -- releases/audit_tool.json; then
