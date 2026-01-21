@@ -6,6 +6,20 @@ set -e  # Exit on error
 # Keep terminal open on error when running interactively (Git Bash double-click)
 trap 'echo "Release failed."; if [ -t 0 ]; then read -r -p "Press Enter to exit..."; fi' ERR
 
+# GitHub config
+GITHUB_USER="muaroi2002"
+GITHUB_REPO="gafc-audit-helper-releases"
+
+# Load token from .github_token file (gitignored)
+TOKEN_FILE="$(dirname "$0")/.github_token"
+if [ ! -f "$TOKEN_FILE" ]; then
+    echo "ERROR: Token file not found: $TOKEN_FILE"
+    echo "Create it with: echo 'your_token_here' > .github_token"
+    exit 1
+fi
+GITHUB_TOKEN=$(cat "$TOKEN_FILE" | tr -d '\n\r')
+GITHUB_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
+
 VERSION=$1
 if [ -z "$VERSION" ]; then
     echo "Usage: ./release.sh 1.0.XX"
@@ -59,12 +73,18 @@ fi
 # 7. Tag
 git tag -f "v$VERSION"
 
-# 8. Push
-git push origin main
-git push origin "v$VERSION" --force
+# 8. Push with token
+echo "4. Pushing to GitHub..."
+git push "$GITHUB_URL" main --force
+git push "$GITHUB_URL" "v$VERSION" --force
 
-# 9. Upload to GitHub Release
-echo "4. Uploading to GitHub Release..."
-gh release upload "v$VERSION" gafc_audit_helper_new.xlam --clobber -R muaroi2002/gafc-audit-helper-releases
+# 9. Upload to GitHub Release (create if not exists)
+echo "5. Uploading to GitHub Release..."
+if gh release view "v$VERSION" -R "${GITHUB_USER}/${GITHUB_REPO}" &>/dev/null; then
+    gh release upload "v$VERSION" gafc_audit_helper_new.xlam --clobber -R "${GITHUB_USER}/${GITHUB_REPO}"
+else
+    gh release create "v$VERSION" gafc_audit_helper_new.xlam --title "v$VERSION" --notes "Release version $VERSION" -R "${GITHUB_USER}/${GITHUB_REPO}"
+fi
 
 echo "=== Release $VERSION completed! ==="
+echo "URL: https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/tag/v$VERSION"

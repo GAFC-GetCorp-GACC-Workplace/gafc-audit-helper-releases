@@ -38,3 +38,4 @@ vba_password.txt
 
 # Obfuscated code (keep only original code in Git)
 extracted_obfuscated/
+.github_token
