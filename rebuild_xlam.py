@@ -10,6 +10,8 @@ import sys
 import getpass
 import base64
 import hashlib
+import os
+import gc
 
 try:
     import win32com.client  # type: ignore
@@ -124,6 +126,35 @@ def find_excel_path():
             return candidate
 
     return None
+
+
+def is_file_locked(path):
+    path = Path(path)
+    if not path.exists():
+        return False
+    try:
+        import msvcrt
+        fd = os.open(str(path), os.O_RDWR | os.O_BINARY)
+    except OSError:
+        return True
+    try:
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        return False
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+
+
+def wait_for_file_release(path, timeout_sec=10):
+    import time
+    start = time.time()
+    while time.time() - start < timeout_sec:
+        if not is_file_locked(path):
+            return True
+        time.sleep(0.2)
+    return False
 
 
 def read_password_from_file():
@@ -558,6 +589,10 @@ def copy_sources(output_path):
     if not MODULE_DIR.exists():
         print(f"ERROR: module folder not found: {MODULE_DIR}")
         sys.exit(1)
+    if output_path.exists() and is_file_locked(output_path):
+        print(f"ERROR: output file is in use: {output_path}")
+        print("Close Excel or unload the add-in, then retry.")
+        sys.exit(1)
     shutil.copy2(SOURCE_XLAM, output_path)
 
 
@@ -790,6 +825,13 @@ def rebuild(dev_mode=False, make_unviewable=False):
         # Save and close (don't lock yet - will use UI automation)
         wb.Close(SaveChanges=True)
         excel.Quit()
+        wb = None
+        excel = None
+        gc.collect()
+        if not wait_for_file_release(output_xlam, timeout_sec=10):
+            print(f"ERROR: output file is still in use: {output_xlam}")
+            print("Close Excel or unload the add-in, then retry.")
+            sys.exit(1)
 
         unlock_ok = None
         if dev_mode:
@@ -858,9 +900,15 @@ def rebuild(dev_mode=False, make_unviewable=False):
     except Exception as exc:  # pragma: no cover
         print(f"ERROR: {exc}", file=sys.stderr)
         if wb:
-            wb.Close(SaveChanges=False)
+            try:
+                wb.Close(SaveChanges=False)
+            except Exception:
+                pass
         if excel:
-            excel.Quit()
+            try:
+                excel.Quit()
+            except Exception:
+                pass
         raise
 
 
