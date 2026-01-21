@@ -57,20 +57,14 @@ echo "   - Updated ThisWorkbook.cls"
 echo "2. Building xlam..."
 python rebuild_xlam.py
 
-# 3. Verify version in built file
-echo "3. Verifying version..."
-python -c "
-import zipfile, re
-with zipfile.ZipFile('gafc_audit_helper_new.xlam', 'r') as z:
-    vba = z.read('xl/vbaProject.bin')
-    from collections import Counter
-    counter = Counter(re.findall(rb'1\.0\.\d+', vba))
-    version = counter.most_common(1)[0][0].decode()
-    if version != '$VERSION':
-        print(f'ERROR: Built version {version} != expected $VERSION')
-        exit(1)
-    print(f'OK: Version verified: {version}')
-"
+# 3. Verify version in source files (VBA binary encoding is unreliable)
+echo "3. Verifying version in source files..."
+if grep -q "CURRENT_VERSION = \"$VERSION\"" extracted_clean/modAutoUpdate.bas; then
+    echo "   OK: Version $VERSION found in modAutoUpdate.bas"
+else
+    echo "   ERROR: Version $VERSION not found in modAutoUpdate.bas"
+    exit 1
+fi
 
 # 4. Commit all changes
 echo "4. Committing changes..."
