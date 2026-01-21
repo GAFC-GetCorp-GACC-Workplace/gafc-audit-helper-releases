@@ -35,7 +35,7 @@ with zipfile.ZipFile('gafc_audit_helper_new.xlam', 'r') as z:
     if version != '$VERSION':
         print(f'ERROR: Built version {version} != expected $VERSION')
         exit(1)
-    print(f'✓ Version verified: {version}')
+    print(f'OK: Version verified: {version}')
 "
 
 # 5. Copy to release name

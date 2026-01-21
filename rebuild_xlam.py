@@ -85,6 +85,47 @@ def decrypt_password(encrypted_password):
         return None
 
 
+def find_excel_path():
+    """Find Excel executable path. Return None if not found."""
+    path = shutil.which("excel.exe")
+    if path:
+        return path
+
+    try:
+        import winreg
+        subkeys = [
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\excel.exe",
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\excel.exe",
+        ]
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            for subkey in subkeys:
+                try:
+                    with winreg.OpenKey(root, subkey) as key:
+                        val, _ = winreg.QueryValueEx(key, "")
+                        if val and Path(val).exists():
+                            return val
+                except OSError:
+                    pass
+    except Exception:
+        pass
+
+    candidates = [
+        r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\root\Office16\EXCEL.EXE",
+        r"C:\Program Files\Microsoft Office\Office16\EXCEL.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\Office16\EXCEL.EXE",
+        r"C:\Program Files\Microsoft Office\root\Office15\EXCEL.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\root\Office15\EXCEL.EXE",
+        r"C:\Program Files\Microsoft Office\Office15\EXCEL.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\Office15\EXCEL.EXE",
+    ]
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return candidate
+
+    return None
+
+
 def read_password_from_file():
     """Read password from vba_password.txt file."""
     if not PASSWORD_FILE.exists():
@@ -165,8 +206,13 @@ def lock_vba_project_via_ui(workbook_path, password):
 
         print("Locking VBA project via UI automation...")
 
+        excel_path = find_excel_path()
+        if not excel_path:
+            print("ERROR: excel.exe not found. Add Excel to PATH or install Microsoft Office.")
+            return False
+
         # Open Excel with the workbook
-        app = Application(backend="uia").start(f'excel.exe "{workbook_path}"')
+        app = Application(backend="uia").start(f'"{excel_path}" "{workbook_path}"')
         time.sleep(2)
 
         # Open VBA Editor (Alt+F11)
@@ -208,7 +254,7 @@ def lock_vba_project_via_ui(workbook_path, password):
             dlg.child_window(title="OK", control_type="Button").click_input()
             time.sleep(0.5)
 
-            print("✓ VBA Project locked successfully via UI automation")
+            print("OK: VBA Project locked successfully via UI automation")
 
             # Close VBE
             send_keys('%{F4}')  # Close VBE
@@ -260,8 +306,13 @@ def unlock_vba_project_via_ui(workbook_path, password):
 
         print("Removing VBA project lock via UI automation...")
 
+        excel_path = find_excel_path()
+        if not excel_path:
+            print("ERROR: excel.exe not found. Add Excel to PATH or install Microsoft Office.")
+            return False
+
         # Open Excel with the workbook
-        app = Application(backend="uia").start(f'excel.exe "{workbook_path}"')
+        app = Application(backend="uia").start(f'"{excel_path}" "{workbook_path}"')
         time.sleep(2)
 
         # Open VBA Editor (Alt+F11)
