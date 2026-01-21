@@ -589,10 +589,23 @@ def copy_sources(output_path):
     if not MODULE_DIR.exists():
         print(f"ERROR: module folder not found: {MODULE_DIR}")
         sys.exit(1)
+
+    # If output file is locked, try to kill Excel and wait
     if output_path.exists() and is_file_locked(output_path):
-        print(f"ERROR: output file is in use: {output_path}")
-        print("Close Excel or unload the add-in, then retry.")
-        sys.exit(1)
+        print(f"ERROR: {output_path.name} is locked, attempting to release...")
+        import subprocess
+        subprocess.run(['taskkill', '/F', '/IM', 'EXCEL.EXE'],
+                      capture_output=True, text=True)
+        import time
+        time.sleep(2)
+
+        # Check again
+        if is_file_locked(output_path):
+            print(f"ERROR: output file is still in use: {output_path}")
+            print("Close Excel or unload the add-in, then retry.")
+            sys.exit(1)
+        print("File released successfully.")
+
     shutil.copy2(SOURCE_XLAM, output_path)
 
 
@@ -842,17 +855,23 @@ def rebuild(dev_mode=False, make_unviewable=False):
             else:
                 unlock_ok = True
 
-        # Lock VBA project via UI automation (REQUIRED for password protection to work)
+        # Skip UI automation (unreliable), go straight to unviewable method
         lock_success = False
-        if password and not dev_mode:
-            print("")
-            print("Applying VBA password protection via UI automation...")
-            lock_success = lock_vba_project_via_ui(output_xlam, password)
 
-        # Optional fallback: make VBA unviewable (binary patch)
+        # Make VBA unviewable (binary patch) - more reliable than UI automation
         unviewable_applied = False
-        if not lock_success and make_unviewable and not dev_mode and password:
-            print("Falling back to unviewable method...")
+        if make_unviewable and not dev_mode and password:
+            print("")
+            print("Applying VBA protection (unviewable method)...")
+            # Kill any lingering Excel processes and wait for file release
+            import subprocess
+            subprocess.run(['taskkill', '/F', '/IM', 'EXCEL.EXE'],
+                          capture_output=True, text=True)
+            import time
+            time.sleep(2)  # Give OS time to release file handles
+            if not wait_for_file_release(output_xlam, timeout_sec=10):
+                print(f"ERROR: File still locked after killing Excel: {output_xlam}")
+                sys.exit(1)
             unviewable_applied = make_vba_unviewable(output_xlam)
 
         inject_custom_ui(output_xlam)

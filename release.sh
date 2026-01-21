@@ -45,8 +45,8 @@ with zipfile.ZipFile('gafc_audit_helper_new.xlam', 'r') as z:
     print(f'OK: Version verified: {version}')
 "
 
-# 5. Copy to release name
-cp gafc_audit_helper_new.xlam gafc_audit_helper.xlam
+# 5. Copy to release folder (for upload)
+cp gafc_audit_helper_new.xlam "releases/gafc_audit_helper_v$VERSION.xlam"
 
 # 6. Commit built file (skip if unchanged)
 if git diff --quiet -- gafc_audit_helper_new.xlam; then
@@ -65,6 +65,6 @@ git push origin "v$VERSION" --force
 
 # 9. Upload to GitHub Release
 echo "4. Uploading to GitHub Release..."
-gh release upload "v$VERSION" gafc_audit_helper.xlam --clobber -R muaroi2002/gafc-audit-helper-releases
+gh release upload "v$VERSION" gafc_audit_helper_new.xlam --clobber -R muaroi2002/gafc-audit-helper-releases
 
 echo "=== Release $VERSION completed! ==="
