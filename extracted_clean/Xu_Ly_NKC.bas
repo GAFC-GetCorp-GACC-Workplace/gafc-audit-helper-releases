@@ -10,6 +10,7 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
     Dim ngayHT As Date, ngayCT As Date
     Dim tkNo As String, tkCo As String
     Dim tkNo3 As String, tkCo3 As String
+    Dim amtVal As Variant
 
     On Error Resume Next
     lastRow = wsNKC.Cells(wsNKC.Rows.Count, 1).End(xlUp).Row
@@ -46,6 +47,12 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
             ' Cot F (No) va G (Co) luon la TK rut gon cap 3 cua cot H/I
             If tkNo <> "" Then wsNKC.Cells(r, 6).Value = tkNo3
             If tkCo <> "" Then wsNKC.Cells(r, 7).Value = tkCo3
+
+            ' Cot J (So tien): neu bi blank/null thi set = 0 de tranh type mismatch
+            amtVal = wsNKC.Cells(r, 10).Value
+            If IsError(amtVal) Or IsEmpty(amtVal) Or Len(Trim$(CStr(amtVal))) = 0 Then
+                wsNKC.Cells(r, 10).Value = 0
+            End If
         End If
     Next r
 
@@ -65,33 +72,155 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
 End Sub
 
 ' Đảm bảo header NKC có đủ cột "Khac" và "Can review" (khi mở file cũ)
-Private Sub EnsureNKCHeader(ws As Worksheet, Optional includeReview As Boolean = False)
-    Const HDR_ROW As Long = 2
-    ' Đảm bảo cột Khac tại cột K; nếu thiếu thì thêm giá trị header.
-    ws.Cells(HDR_ROW, 11).Value = "Kh" & ChrW(225) & "c"
+Private Sub EnsureNKCHeader(ws As Worksheet, Optional includeReview As Boolean = False, Optional extraHeaders As Variant)
 
-    If includeReview Then
-        ' Sổ chưa xử lý: thêm cột review tại L
-        ws.Cells(HDR_ROW, 12).Value = "C" & ChrW(7847) & "n review"
-        With ws.Range("A2:L2")
-            .Font.Bold = True
-            .Interior.Color = RGB(220, 230, 241)
-            .AutoFilter
-        End With
-        ws.Columns("A:L").AutoFit
-    Else
-        ' Sổ đã xử lý: chỉ tới cột K
-        With ws.Range("A2:K2")
-            .Font.Bold = True
-            .Interior.Color = RGB(220, 230, 241)
-            .AutoFilter
-        End With
-        ws.Columns("A:K").AutoFit
+    Const HDR_ROW As Long = 2
+
+    Dim extraCount As Long, i As Long, lastCol As Long
+
+    Dim headerVal As Variant
+
+
+
+    extraCount = 0
+
+    If Not IsMissing(extraHeaders) Then
+
+        If IsArray(extraHeaders) Then
+
+            On Error Resume Next
+
+            extraCount = UBound(extraHeaders) - LBound(extraHeaders) + 1
+
+            If extraCount < 0 Then extraCount = 0
+
+            On Error GoTo 0
+
+        End If
+
     End If
 
-    ' Giới hạn độ rộng cột Dien giai (E) để tránh kéo quá dài khi AutoFit
+
+
+    ' Ensure base "Khac" column at K
+
+    ws.Cells(HDR_ROW, 11).Value = "Kh" & ChrW(225) & "c"
+
+    If extraCount > 0 Then
+
+        For i = 1 To extraCount
+
+            headerVal = extraHeaders(i)
+
+            If Len(Trim$(CStr(headerVal))) = 0 Then headerVal = "Khac " & i
+
+            ws.Cells(HDR_ROW, 11 + i).Value = headerVal
+
+        Next i
+
+    End If
+
+
+
+    If includeReview Then
+
+        ws.Cells(HDR_ROW, 11 + extraCount + 1).Value = "C" & ChrW(7847) & "n review"
+
+    End If
+
+
+
+    lastCol = 11 + extraCount + IIf(includeReview, 1, 0)
+
+    With ws.Range(ws.Cells(HDR_ROW, 1), ws.Cells(HDR_ROW, lastCol))
+
+        .Font.Bold = True
+
+        .Interior.Color = RGB(220, 230, 241)
+
+        .AutoFilter
+
+    End With
+
+    ws.Range(ws.Cells(1, 1), ws.Cells(1, lastCol)).EntireColumn.AutoFit
+
+
+
+    ' Limit width for Dien giai (E) to avoid overly wide columns
+
     If ws.Columns(5).ColumnWidth > 50 Then ws.Columns(5).ColumnWidth = 50
+
 End Sub
+
+
+
+Private Sub FillExtraFromPair(ByRef outputArr As Variant, ByVal outRow As Long, ByVal extraCount As Long, ByVal colExtraStart As Long, ByRef arrExtra As Variant, ByVal rNo As Long, ByVal rCo As Long)
+
+    Dim j As Long, extraVal As Variant
+
+    If extraCount <= 0 Then Exit Sub
+
+    For j = 1 To extraCount
+
+        extraVal = arrExtra(rNo, j)
+
+        If Len(Trim$(CStr(extraVal))) = 0 Then extraVal = arrExtra(rCo, j)
+
+        outputArr(outRow, colExtraStart + j - 1) = extraVal
+
+    Next j
+
+End Sub
+
+
+
+Private Sub FillExtraFromOne(ByRef outputArr As Variant, ByVal outRow As Long, ByVal extraCount As Long, ByVal colExtraStart As Long, ByRef arrExtra As Variant, ByVal rIdx As Long)
+
+    Dim j As Long
+
+    If extraCount <= 0 Then Exit Sub
+
+    For j = 1 To extraCount
+
+        outputArr(outRow, colExtraStart + j - 1) = arrExtra(rIdx, j)
+
+    Next j
+
+End Sub
+
+
+
+Private Function NzDbl(ByVal v As Variant) As Double
+    If IsError(v) Or IsNull(v) Or IsEmpty(v) Then
+        NzDbl = 0#
+    ElseIf IsNumeric(v) Then
+        NzDbl = CDbl(v)
+    Else
+        NzDbl = 0#
+    End If
+End Function
+
+Private Function NzVal(ByVal v As Variant) As Double
+    If IsError(v) Or IsNull(v) Or IsEmpty(v) Then
+        NzVal = 0#
+    Else
+        NzVal = CDbl(Val(v))
+    End If
+End Function
+
+
+Private Function GetLastUsedColumn(ws As Worksheet) As Long
+    Dim lastCell As Range
+    On Error Resume Next
+    Set lastCell = ws.Cells.Find(What:="*", LookIn:=xlValues, SearchOrder:=xlByColumns, SearchDirection:=xlPrevious)
+    On Error GoTo 0
+    If lastCell Is Nothing Then
+        GetLastUsedColumn = 0
+    Else
+        GetLastUsedColumn = lastCell.Column
+    End If
+End Function
+
 
 Private Function NormalizeHeaderText(ByVal s As String) As String
     s = LCase$(Trim$(CStr(s)))
@@ -353,7 +482,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim wsNguon As Worksheet, wsKetQua As Worksheet
     Dim wb As Workbook
     Dim dictGroup As Object
-    Dim lastRow As Long, i As Long
+    Dim lastRow As Long, i As Long, j As Long
     Dim arrData As Variant
     Dim rowCount As Long
     Dim arrMaCT() As String, arrNgay() As Variant, arrDienGiai() As Variant
@@ -361,6 +490,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim arrNo() As Double, arrCo() As Double
     Dim arrKhac() As Variant, arrMonth() As Variant
     Dim arrKey() As String
+    Dim arrExtra() As Variant, extraHeaders() As Variant
+    Dim extraCount As Long, lastColSrc As Long
+    Dim colKhac As Long, colExtraStart As Long, colReview As Long
     Dim pairCache As Object
     Dim key As Variant, r As Variant
     Dim pivotErr As String, thMsg As String
@@ -424,7 +556,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         Exit Sub
     End If
     ' Doc du lieu vao array truoc khi tao sheet moi
-    arrData = wsNguon.Range("A2:G" & lastRow).Value
+    lastColSrc = GetLastUsedColumn(wsNguon)
+    If lastColSrc < 7 Then lastColSrc = 7
+    arrData = wsNguon.Range(wsNguon.Cells(2, 1), wsNguon.Cells(lastRow, lastColSrc)).Value
     rowCount = UBound(arrData, 1)
     ReDim arrMaCT(1 To rowCount)
     ReDim arrNgay(1 To rowCount)
@@ -436,14 +570,28 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     ReDim arrKhac(1 To rowCount)
     ReDim arrMonth(1 To rowCount)
     ReDim arrKey(1 To rowCount)
+    extraCount = lastColSrc - 7
+    If extraCount > 0 Then
+        ReDim arrExtra(1 To rowCount, 1 To extraCount)
+        ReDim extraHeaders(1 To extraCount)
+        For j = 1 To extraCount
+            extraHeaders(j) = Trim$(CStr(wsNguon.Cells(1, 7 + j).Value))
+            If extraHeaders(j) = "" Then extraHeaders(j) = "Khac " & j
+        Next j
+    End If
     For i = 1 To rowCount
         arrMaCT(i) = Trim$(CStr(arrData(i, 1)))
         arrNgay(i) = arrData(i, 2)
         arrDienGiai(i) = arrData(i, 3)
         arrTK(i) = Trim$(CStr(arrData(i, 4)))
-        If IsNumeric(arrData(i, 5)) Then arrNo(i) = CDbl(arrData(i, 5)) Else arrNo(i) = 0#
-        If IsNumeric(arrData(i, 6)) Then arrCo(i) = CDbl(arrData(i, 6)) Else arrCo(i) = 0#
+        arrNo(i) = NzDbl(arrData(i, 5))
+        arrCo(i) = NzDbl(arrData(i, 6))
         arrKhac(i) = arrData(i, 7)
+        If extraCount > 0 Then
+            For j = 1 To extraCount
+                arrExtra(i, j) = arrData(i, 7 + j)
+            Next j
+        End If
         If arrTK(i) <> "" Then
             arrTK3(i) = Left$(arrTK(i), 3)
         Else
@@ -467,25 +615,32 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Application.DisplayAlerts = True
     ' Tao header theo mau
     With wsKetQua
-        .Cells(2, 1).Value = "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n"
-        .Cells(2, 2).Value = "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915)
-        .Cells(2, 3).Value = "Th" & ChrW(225) & "ng"
-        .Cells(2, 4).Value = "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n"
-        .Cells(2, 5).Value = "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i"
-        .Cells(2, 6).Value = "N" & ChrW(7907)
-        .Cells(2, 7).Value = "C" & ChrW(243)
-        .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
-        .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
-        .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
-        .Cells(2, 11).Value = "Kh" & ChrW(225) & "c"
-        .Cells(2, 12).Value = "C" & ChrW(7847) & "n review"
-        .Range("A2:L2").Font.Bold = True
-        .Range("A2:L2").Interior.Color = RGB(220, 230, 241)
-        .Range("A2:L2").AutoFilter
-        .Columns("A:L").AutoFit
-    End With
-    ' Chuẩn hóa header cho luồng "chưa xử lý" (giữ Khac + review)
-    EnsureNKCHeader wsKetQua, True
+
+    .Cells(2, 1).Value = "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n"
+
+    .Cells(2, 2).Value = "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915)
+
+    .Cells(2, 3).Value = "Th" & ChrW(225) & "ng"
+
+    .Cells(2, 4).Value = "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n"
+
+    .Cells(2, 5).Value = "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i"
+
+    .Cells(2, 6).Value = "N" & ChrW(7907)
+
+    .Cells(2, 7).Value = "C" & ChrW(243)
+
+    .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
+
+    .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
+
+    .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
+
+End With
+
+' Chuan hoa header (Khac + review + cot bo sung)
+
+EnsureNKCHeader wsKetQua, True, extraHeaders
     Set dictGroup = CreateObject("Scripting.Dictionary")
     ' Nhom du lieu theo MaCT|Ngay
     For i = 1 To rowCount
@@ -514,7 +669,15 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     ' ========== XU LY VA THU THAP OUTPUT ==========
     Dim outputArr() As Variant
     Dim colCount As Long
-    colCount = IIf(includeReview, 12, 11)
+    colKhac = 11
+
+    colExtraStart = colKhac + 1
+
+    colReview = 0
+
+    colCount = colKhac + extraCount + IIf(includeReview, 1, 0)
+
+    If includeReview Then colReview = colKhac + extraCount + 1
     ReDim outputArr(1 To (lastRow - 1) * 10, 1 To colCount)
     Dim dongOut As Long
     dongOut = 1
@@ -533,10 +696,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                 dsCoEntries.Add Array(r, tienCoGoc)
             End If
         Next r
-        If dsNoEntries.Count = 0 Or dsCoEntries.Count = 0 Then GoTo NextGroup
         Dim usedNo() As Double, usedCo() As Double
-        ReDim usedNo(1 To dsNoEntries.Count)
-        ReDim usedCo(1 To dsCoEntries.Count)
         Dim idxNo As Long, idxCo As Long
         Dim entryNo As Variant, entryCo As Variant
         Dim rNo As Long, rCo As Long
@@ -545,13 +705,74 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         Dim tienPhanBo As Double
         Dim absNo As Double, absCo As Double
         Dim tkNo As String, tkCo As String
-        Dim khacValFast As Variant
+        Dim khacValFast As Variant, extraVal As Variant
         Dim needReview As String
+        Dim totalNo As Double, totalCo As Double
+        Dim canFastPath As Boolean
         ' Lay trang thai "ban" cua nhom
         needReview = ""
         If dictDirty(key) Then needReview = "X"
+        If dsNoEntries.Count = 0 Or dsCoEntries.Count = 0 Then
+            ' Output single-side entries for review
+            For idxNo = 1 To dsNoEntries.Count
+                entryNo = dsNoEntries(idxNo)
+                rNo = entryNo(0)
+                tienNoEntry = entryNo(1)
+                If dongOut > UBound(outputArr, 1) Then
+                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                End If
+                outputArr(dongOut, 1) = arrNgay(rNo)
+                outputArr(dongOut, 2) = ""
+                outputArr(dongOut, 3) = arrMonth(rNo)
+                outputArr(dongOut, 4) = arrMaCT(rNo)
+                outputArr(dongOut, 5) = arrDienGiai(rNo)
+                outputArr(dongOut, 6) = arrTK3(rNo)
+                outputArr(dongOut, 7) = ""
+                outputArr(dongOut, 8) = arrTK(rNo)
+                outputArr(dongOut, 9) = ""
+                outputArr(dongOut, 10) = tienNoEntry
+                outputArr(dongOut, colKhac) = arrKhac(rNo)
+                FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo
+                If includeReview Then outputArr(dongOut, colReview) = "X"
+                dongOut = dongOut + 1
+            Next idxNo
+            For idxCo = 1 To dsCoEntries.Count
+                entryCo = dsCoEntries(idxCo)
+                rCo = entryCo(0)
+                tienCoEntry = entryCo(1)
+                If dongOut > UBound(outputArr, 1) Then
+                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                End If
+                outputArr(dongOut, 1) = arrNgay(rCo)
+                outputArr(dongOut, 2) = ""
+                outputArr(dongOut, 3) = arrMonth(rCo)
+                outputArr(dongOut, 4) = arrMaCT(rCo)
+                outputArr(dongOut, 5) = arrDienGiai(rCo)
+                outputArr(dongOut, 6) = ""
+                outputArr(dongOut, 7) = arrTK3(rCo)
+                outputArr(dongOut, 8) = ""
+                outputArr(dongOut, 9) = arrTK(rCo)
+                outputArr(dongOut, 10) = tienCoEntry
+                outputArr(dongOut, colKhac) = arrKhac(rCo)
+                FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, rCo
+                If includeReview Then outputArr(dongOut, colReview) = "X"
+                dongOut = dongOut + 1
+            Next idxCo
+            GoTo NextGroup
+        End If
+        ReDim usedNo(1 To dsNoEntries.Count)
+        ReDim usedCo(1 To dsCoEntries.Count)
+        totalNo = 0#
+        For idxNo = 1 To dsNoEntries.Count
+            totalNo = totalNo + dsNoEntries(idxNo)(1)
+        Next idxNo
+        totalCo = 0#
+        For idxCo = 1 To dsCoEntries.Count
+            totalCo = totalCo + dsCoEntries(idxCo)(1)
+        Next idxCo
+        canFastPath = (Abs(totalNo - totalCo) < 0.01)
         ' ========== FAST PATH: 1 NO or 1 CO -> phan bo truc tiep (giu dung gia tri am) ==========
-        If dsNoEntries.Count = 1 Or dsCoEntries.Count = 1 Then
+        If canFastPath And (dsNoEntries.Count = 1 Or dsCoEntries.Count = 1) Then
             If dsNoEntries.Count = 1 Then
                 entryNo = dsNoEntries(1)
                 rNo = entryNo(0)
@@ -576,12 +797,13 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                     outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
                     outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienCoEntry     ' So tien (giu dung dau)
-                    outputArr(dongOut, 11) = khacValFast     ' Khac
+                    outputArr(dongOut, colKhac) = khacValFast     ' Khac
+                    FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
                     If includeReview Then
                         If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
-                            outputArr(dongOut, 12) = needReview
+                            outputArr(dongOut, colReview) = needReview
                         Else
-                            outputArr(dongOut, 12) = "X"
+                            outputArr(dongOut, colReview) = "X"
                         End If
                     End If
                     usedNo(1) = usedNo(1) + tienCoEntry
@@ -612,12 +834,14 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                     outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
                     outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNoEntry     ' So tien (giu dung dau)
-                    outputArr(dongOut, 11) = khacValFast     ' Khac
+                    outputArr(dongOut, colKhac) = khacValFast     ' Khac
+
+                    FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
                     If includeReview Then
                         If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
-                            outputArr(dongOut, 12) = needReview
+                            outputArr(dongOut, colReview) = needReview
                         Else
-                            outputArr(dongOut, 12) = "X"
+                            outputArr(dongOut, colReview) = "X"
                         End If
                     End If
                     usedNo(idxNo) = usedNo(idxNo) + tienNoEntry
@@ -661,7 +885,8 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                     outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
                     outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
-                    outputArr(dongOut, 11) = khacVal          ' Khac (lay tu G, uu tien dong No, neu trong thi dong Co)
+                    outputArr(dongOut, colKhac) = khacVal          ' Khac (lay tu G, uu tien dong No, neu trong thi dong Co)
+                    FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
                     usedCo(idxCo) = usedCo(idxCo) + tienNo
                     dongOut = dongOut + 1
@@ -701,7 +926,8 @@ NextNoPass1:
                     outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
                     outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                     outputArr(dongOut, 10) = tienNo          ' So tien
-                    outputArr(dongOut, 11) = khacVal2        ' Khac
+                    outputArr(dongOut, colKhac) = khacVal2        ' Khac
+                    FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
                     usedNo(idxNo) = usedNo(idxNo) + tienNo
                     usedCo(idxCo) = usedCo(idxCo) + tienNo
                     dongOut = dongOut + 1
@@ -763,13 +989,14 @@ NextNoPass2:
                 outputArr(dongOut, 8) = arrTK(rNo)  ' No TK (full)
                 outputArr(dongOut, 9) = arrTK(rCo)  ' Co TK (full)
                 outputArr(dongOut, 10) = tienPhanBo      ' So tien
-                outputArr(dongOut, 11) = khacVal3        ' Khac
+                outputArr(dongOut, colKhac) = khacVal3        ' Khac
+                FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
                 ' Nếu luồng chưa xử lý (includeReview=True) thì cột 12 là review
                 If includeReview Then
                     If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
-                        outputArr(dongOut, 12) = needReview
+                        outputArr(dongOut, colReview) = needReview
                     Else
-                        outputArr(dongOut, 12) = "X"
+                        outputArr(dongOut, colReview) = "X"
                     End If
                 End If
                 usedNo(idxNo) = usedNo(idxNo) + tienPhanBo
@@ -780,13 +1007,65 @@ NextNoPass2:
             Loop
 NextNoPass3:
         Next idxNo
+        ' ========== LEFTOVER: output unmatched amounts for review ==========
+        For idxNo = 1 To dsNoEntries.Count
+            entryNo = dsNoEntries(idxNo)
+            rNo = entryNo(0)
+            tienNoEntry = entryNo(1)
+            tienNo = tienNoEntry - usedNo(idxNo)
+            If Abs(tienNo) >= 0.01 Then
+                If dongOut > UBound(outputArr, 1) Then
+                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                End If
+                outputArr(dongOut, 1) = arrNgay(rNo)
+                outputArr(dongOut, 2) = ""
+                outputArr(dongOut, 3) = arrMonth(rNo)
+                outputArr(dongOut, 4) = arrMaCT(rNo)
+                outputArr(dongOut, 5) = arrDienGiai(rNo)
+                outputArr(dongOut, 6) = arrTK3(rNo)
+                outputArr(dongOut, 7) = ""
+                outputArr(dongOut, 8) = arrTK(rNo)
+                outputArr(dongOut, 9) = ""
+                outputArr(dongOut, 10) = tienNo
+                outputArr(dongOut, colKhac) = arrKhac(rNo)
+
+                FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo
+                If includeReview Then outputArr(dongOut, colReview) = "X"
+                dongOut = dongOut + 1
+            End If
+        Next idxNo
+        For idxCo = 1 To dsCoEntries.Count
+            entryCo = dsCoEntries(idxCo)
+            rCo = entryCo(0)
+            tienCoEntry = entryCo(1)
+            tienCo = tienCoEntry - usedCo(idxCo)
+            If Abs(tienCo) >= 0.01 Then
+                If dongOut > UBound(outputArr, 1) Then
+                    ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                End If
+                outputArr(dongOut, 1) = arrNgay(rCo)
+                outputArr(dongOut, 2) = ""
+                outputArr(dongOut, 3) = arrMonth(rCo)
+                outputArr(dongOut, 4) = arrMaCT(rCo)
+                outputArr(dongOut, 5) = arrDienGiai(rCo)
+                outputArr(dongOut, 6) = ""
+                outputArr(dongOut, 7) = arrTK3(rCo)
+                outputArr(dongOut, 8) = ""
+                outputArr(dongOut, 9) = arrTK(rCo)
+                outputArr(dongOut, 10) = tienCo
+                outputArr(dongOut, colKhac) = arrKhac(rCo)
+
+                FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, rCo
+                If includeReview Then outputArr(dongOut, colReview) = "X"
+                dongOut = dongOut + 1
+            End If
+        Next idxCo
 NextGroup:
     Next key
     ' ========== GHI OUTPUT ==========
     If dongOut > 1 Then
         Dim finalOut() As Variant
         ReDim finalOut(1 To dongOut - 1, 1 To colCount)
-        Dim j As Long
         For i = 1 To dongOut - 1
             For j = 1 To colCount
                 finalOut(i, j) = outputArr(i, j)
@@ -798,8 +1077,8 @@ NextGroup:
         Dim rng As Range
         If includeReview Then
             For i = 3 To dongOut + 1
-                If wsKetQua.Cells(i, 12).Value = "X" Then
-                    Set rng = wsKetQua.Range(wsKetQua.Cells(i, 1), wsKetQua.Cells(i, 12))
+                If wsKetQua.Cells(i, colReview).Value = "X" Then
+                    Set rng = wsKetQua.Range(wsKetQua.Cells(i, 1), wsKetQua.Cells(i, colReview))
                     rng.Interior.Color = RGB(255, 255, 150) ' Vang
                 End If
             Next i
@@ -817,7 +1096,7 @@ NextGroup:
     ' Dem so dong can review
     Dim countReview As Long
     If includeReview Then
-        countReview = Application.WorksheetFunction.CountIf(wsKetQua.Columns(12), "X")
+        countReview = Application.WorksheetFunction.CountIf(wsKetQua.Columns(colReview), "X")
     Else
         countReview = 0
     End If
@@ -1292,12 +1571,12 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
             tkTB = NormalizeAccount(wsTB.Cells(r, 3).Value)
             If tkTB <> "" And Left$(tkTB, lenMain) = tkRoot Then
                 If Len(tkTB) = lenMain Then
-                    duNoExact = duNoExact + CDbl(val(wsTB.Cells(r, 5).Value))
-                    duCoExact = duCoExact + CDbl(val(wsTB.Cells(r, 6).Value))
+                    duNoExact = duNoExact + NzVal(wsTB.Cells(r, 5).Value)
+                    duCoExact = duCoExact + NzVal(wsTB.Cells(r, 6).Value)
                     hasExact = True
                 Else
-                    duNoLeft = duNoLeft + CDbl(val(wsTB.Cells(r, 5).Value))
-                    duCoLeft = duCoLeft + CDbl(val(wsTB.Cells(r, 6).Value))
+                    duNoLeft = duNoLeft + NzVal(wsTB.Cells(r, 5).Value)
+                    duCoLeft = duCoLeft + NzVal(wsTB.Cells(r, 6).Value)
                 End If
             End If
         Next r
@@ -1319,7 +1598,7 @@ Public Function Auto_Tinh_TH(wsNKC As Worksheet) As String
         If Not hasMonthFilter Or wsNKC.Cells(r, 3).Value = monthFilter Then
             tkNoFull = NormalizeAccount(wsNKC.Cells(r, 8).Value)
             tkCoFull = NormalizeAccount(wsNKC.Cells(r, 9).Value)
-            soTien = CDbl(val(wsNKC.Cells(r, 10).Value))
+            soTien = NzVal(wsNKC.Cells(r, 10).Value)
             If tkNoFull <> "" And Left$(tkNoFull, lenMain) = tkRoot Then
                 If oppLenSetting > 0 And oppLenSetting >= 4 Then
                     oppKey = tkCoFull ' lay full neu yeu cau >=4

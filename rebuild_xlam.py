@@ -244,6 +244,107 @@ def lock_vba_project_via_ui(workbook_path, password):
         return False
 
 
+def unlock_vba_project_via_ui(workbook_path, password):
+    """
+    Remove VBA project lock using UI automation (dev builds).
+    Returns True if it appears unlocked or lock removed successfully.
+    """
+    if not password:
+        print("No password provided, cannot remove VBA lock")
+        return False
+
+    try:
+        import time
+        from pywinauto import Application
+        from pywinauto.keyboard import send_keys
+
+        print("Removing VBA project lock via UI automation...")
+
+        # Open Excel with the workbook
+        app = Application(backend="uia").start(f'excel.exe "{workbook_path}"')
+        time.sleep(2)
+
+        # Open VBA Editor (Alt+F11)
+        send_keys('%{F11}')
+        time.sleep(1)
+
+        # Try to open Properties; handle password prompt if it appears
+        for _ in range(2):
+            send_keys('%TP')
+            time.sleep(1)
+
+            try:
+                pwd_dlg = app.window(title_re=".*VBAProject.*Password.*|.*Password.*")
+                if pwd_dlg.exists(timeout=1):
+                    pwd_edit = pwd_dlg.child_window(control_type="Edit")
+                    pwd_edit.click_input()
+                    send_keys(password)
+                    time.sleep(0.2)
+                    pwd_dlg.child_window(title="OK", control_type="Button").click_input()
+                    time.sleep(0.5)
+                    continue
+            except Exception:
+                pass
+
+            break
+
+        dlg = app.window(title_re=".*VBAProject.*Properties.*")
+        dlg.wait('visible', timeout=5)
+
+        # Click Protection tab
+        if dlg.child_window(title="Protection", control_type="TabItem").exists():
+            dlg.child_window(title="Protection").click_input()
+            time.sleep(0.5)
+
+        # Uncheck "Lock project for viewing"
+        lock_checkbox = dlg.child_window(title_re=".*Lock project.*", control_type="CheckBox")
+        if lock_checkbox.exists():
+            if lock_checkbox.get_toggle_state():
+                lock_checkbox.click_input()
+                time.sleep(0.3)
+
+        # Clear password fields if enabled
+        edits = dlg.descendants(control_type="Edit")
+        for edit in edits[:2]:
+            try:
+                edit.click_input()
+                send_keys('^a{BACKSPACE}')
+                time.sleep(0.1)
+            except Exception:
+                pass
+
+        # Click OK
+        dlg.child_window(title="OK", control_type="Button").click_input()
+        time.sleep(0.5)
+
+        # Close VBE
+        send_keys('%{F4}')
+        time.sleep(0.5)
+
+        # Save and close workbook
+        send_keys('^s')
+        time.sleep(1)
+        send_keys('%{F4}')
+        time.sleep(0.5)
+
+        print("VBA project lock removed for dev output")
+        return True
+
+    except ImportError:
+        print("ERROR: pywinauto not installed")
+        print("Install it with: pip install pywinauto")
+        return False
+    except Exception as e:
+        print(f"ERROR: Could not remove VBA lock: {e}")
+        try:
+            send_keys('%{F4}')
+            send_keys('%{F4}')
+            send_keys('%{F4}')
+        except Exception:
+            pass
+        return False
+
+
 def lock_vba_project(vb_proj, password):
     """Placeholder - actual locking done after file is saved via lock_vba_project_via_ui()"""
     if not password:
@@ -639,6 +740,15 @@ def rebuild(dev_mode=False, make_unviewable=False):
         wb.Close(SaveChanges=True)
         excel.Quit()
 
+        unlock_ok = None
+        if dev_mode:
+            if password:
+                print("")
+                print("Ensuring VBA project is unlocked for dev build...")
+                unlock_ok = unlock_vba_project_via_ui(output_xlam, password)
+            else:
+                unlock_ok = True
+
         # Lock VBA project via UI automation (REQUIRED for password protection to work)
         lock_success = False
         if password and not dev_mode:
@@ -659,25 +769,39 @@ def rebuild(dev_mode=False, make_unviewable=False):
         print(f"Build completed: {output_xlam}")
         print("=" * 80)
 
-        if password:
-            if lock_success:
-                print("SUCCESS: VBA Project locked with password via UI automation")
-                print(f"  Password: {password}")
-                print("  Users MUST enter password to view/edit VBA code")
-            elif unviewable_applied:
-                print("WARNING: VBA Project set to UNVIEWABLE (fallback method)")
-                print("  Code cannot be viewed even with password")
-                print(f"  To unlock: python unlock_vba.py {output_xlam.name}")
+        if dev_mode:
+            print("INFO: Dev build: VBA project must remain unlocked.")
+            if password:
+                if unlock_ok:
+                    print("VBA project is unlocked for dev output.")
+                else:
+                    print("WARNING: Dev output may still be locked.")
+                    print("  To unlock manually:")
+                    print(f"  1. Open {output_xlam.name} in Excel")
+                    print("  2. Alt+F11 -> Tools -> VBAProject Properties -> Protection")
+                    print("  3. Uncheck 'Lock project' and clear password")
             else:
-                print("ERROR: VBA protection FAILED!")
-                print("  Code is NOT protected and can be viewed by anyone!")
-                print("")
-                print("  To protect manually:")
-                print(f"  1. Open {output_xlam.name} in Excel")
-                print("  2. Alt+F11 -> Tools -> VBAProject Properties -> Protection")
-                print("  3. Check 'Lock project' and enter password")
+                print("No password configured; dev output should be unlocked.")
         else:
-            print("INFO: VBA Project is UNLOCKED (dev mode)")
+            if password:
+                if lock_success:
+                    print("SUCCESS: VBA Project locked with password via UI automation")
+                    print(f"  Password: {password}")
+                    print("  Users MUST enter password to view/edit VBA code")
+                elif unviewable_applied:
+                    print("WARNING: VBA Project set to UNVIEWABLE (fallback method)")
+                    print("  Code cannot be viewed even with password")
+                    print(f"  To unlock: python unlock_vba.py {output_xlam.name}")
+                else:
+                    print("ERROR: VBA protection FAILED!")
+                    print("  Code is NOT protected and can be viewed by anyone!")
+                    print("")
+                    print("  To protect manually:")
+                    print(f"  1. Open {output_xlam.name} in Excel")
+                    print("  2. Alt+F11 -> Tools -> VBAProject Properties -> Protection")
+                    print("  3. Check 'Lock project' and enter password")
+            else:
+                print("INFO: VBA Project is UNLOCKED (no password configured)")
 
         print("=" * 80)
     except Exception as exc:  # pragma: no cover
