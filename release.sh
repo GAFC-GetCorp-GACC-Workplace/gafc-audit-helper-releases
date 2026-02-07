@@ -56,7 +56,7 @@ echo "   - Updated ThisWorkbook.cls"
 
 # 2. Build
 echo "2. Building xlam..."
-python rebuild_xlam_release.py
+python rebuild_xlam_release.py --unviewable
 
 # 3. Verify version in source files (VBA binary encoding is unreliable)
 echo "3. Verifying version in source files..."
