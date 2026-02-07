@@ -38,6 +38,7 @@ Public Sub Sumpro(control As IRibbonControl)
 
     ' Precompute sums from Xu_ly once
     For r = 1 To UBound(dataXL, 1)
+        If IsError(dataXL(r, 1)) Or IsEmpty(dataXL(r, 1)) Then GoTo NextXLRow
         tk = Trim$(CStr(dataXL(r, 1)))
         If tk <> "" Then
             If Not dictFull.Exists(tk) Then dictFull.Add tk, Array(0#, 0#, 0#, 0#, 0#, 0#)
@@ -74,9 +75,11 @@ Public Sub Sumpro(control As IRibbonControl)
                 End If
             Next k
         End If
+NextXLRow:
     Next r
 
     For i = 2 To lastTB
+        If IsError(wsTB.Cells(i, 3).Value) Then GoTo NextTBRow
         prefix = Trim$(CStr(wsTB.Cells(i, 3).Value))
         If prefix <> "" Then
             If dictSpecial.Exists(prefix) Then
@@ -109,6 +112,7 @@ Public Sub Sumpro(control As IRibbonControl)
                 resultArr(i - 1, c) = 0#
             Next c
         End If
+NextTBRow:
     Next i
     wsTB.Range("D2").Resize(UBound(resultArr), 6).Value = resultArr
     Dim totalRow As Long: totalRow = lastTB + 1

@@ -51,6 +51,7 @@ Public Sub Tao_NKC(control As IRibbonControl)
     Set wsNKC = wb.Sheets(1)
     With wsNKC
         .Name = "So Nhat Ky Chung"
+        .Cells.Font.Name = "Times New Roman"
         .Range("A1:G1").Value = Array("M" & ChrW(227) & " CT", "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n", "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i", "T" & ChrW(224) & "i kho" & ChrW(7843) & "n", "PS n" & ChrW(7907), "PS c" & ChrW(243), "Kh" & ChrW(225) & "c")
         .Range("A1:G1").Font.Bold = True
         .Range("A1:G1").AutoFilter
@@ -59,6 +60,7 @@ Public Sub Tao_NKC(control As IRibbonControl)
     Set wsTB = wb.Sheets.Add(After:=wsNKC)
     With wsTB
         .Name = "TB"
+        .Cells.Font.Name = "Times New Roman"
         .Cells(2, 5).Value = ChrW(272) & ChrW(7847) & "u k" & ChrW(7923)
         .Cells(2, 7).Value = "Ph" & ChrW(225) & "t sinh"
         .Cells(2, 9).Value = "Cu" & ChrW(7889) & "i k" & ChrW(7923)
@@ -87,6 +89,10 @@ Public Sub Tao_NKC(control As IRibbonControl)
         ActiveWindow.FreezePanes = True
         .Cells(4, 1).Select
     End With
+    Dim ws As Worksheet
+    For Each ws In wb.Worksheets
+        ws.Cells.Font.Name = "Times New Roman"
+    Next ws
     wsNKC.Activate
     ' silent
 End Sub
@@ -106,17 +112,18 @@ Public Sub Tao_Template_NKC_TB(control As IRibbonControl)
     With wsNKC
         .Name = "NKC"
         ' Header row
-        .Cells(2, 1).Value = "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n"
-        .Cells(2, 2).Value = "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915)
-        .Cells(2, 3).Value = "Th" & ChrW(225) & "ng"
-        .Cells(2, 4).Value = "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n"
-        .Cells(2, 5).Value = "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i"
-        .Cells(2, 6).Value = "N" & ChrW(7907)
-        .Cells(2, 7).Value = "C" & ChrW(243)
-        .Cells(2, 8).Value = "N" & ChrW(7907) & " TK"
-        .Cells(2, 9).Value = "C" & ChrW(243) & " TK"
-        .Cells(2, 10).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
+        .Cells(2, 1).Value = "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915)
+        .Cells(2, 2).Value = "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n"
+        .Cells(2, 3).Value = "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i"
+        .Cells(2, 4).Value = "N" & ChrW(7907) & " TK"
+        .Cells(2, 5).Value = "C" & ChrW(243) & " TK"
+        .Cells(2, 6).Value = "S" & ChrW(7889) & " ti" & ChrW(7873) & "n"
+        .Cells(2, 7).Value = "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n"
+        .Cells(2, 8).Value = "Th" & ChrW(225) & "ng"
+        .Cells(2, 9).Value = "N" & ChrW(7907)
+        .Cells(2, 10).Value = "C" & ChrW(243)
         .Cells(2, 11).Value = "Kh" & ChrW(225) & "c"
+        .Cells.Font.Name = "Times New Roman"
 
         ' Format header (sổ đã xử lý: chỉ thêm Khác, không có review)
         .Range("A2:K2").Font.Bold = True
@@ -149,6 +156,7 @@ Public Sub Tao_Template_NKC_TB(control As IRibbonControl)
     Set wsTB = wb.Sheets.Add(After:=wsNKC)
     With wsTB
         .Name = "TB"
+        .Cells.Font.Name = "Times New Roman"
         ' Period headers
         .Cells(2, 5).Value = ChrW(272) & ChrW(7847) & "u k" & ChrW(7923)
         .Cells(2, 7).Value = "Ph" & ChrW(225) & "t sinh"
@@ -189,7 +197,10 @@ Public Sub Tao_Template_NKC_TB(control As IRibbonControl)
 
     wsNKC.Activate
     Application.ScreenUpdating = True
-    
+    Dim wsAll As Worksheet
+    For Each wsAll In wb.Worksheets
+        wsAll.Cells.Font.Name = "Times New Roman"
+    Next wsAll
 End Sub
 Public Function Tao_TH_Template(wb As Workbook, afterSheet As Worksheet) As Worksheet
     Dim ws As Worksheet

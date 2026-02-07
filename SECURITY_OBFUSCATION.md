@@ -134,7 +134,7 @@ python obfuscate_vba.py
 # MODULE_DIR = BASE_DIR / "extracted_obfuscated"
 
 # 3. Build
-python rebuild_xlam.py
+python rebuild_xlam_release.py
 ```
 
 ## Mức độ bảo vệ
@@ -175,7 +175,7 @@ extracted_clean/          ← Code GỐC (readable, maintain được)
     ↓
 extracted_obfuscated/     ← Code đã obfuscate (deploy)
     ↓
-[rebuild_xlam.py]         ← Build + Lock password
+[rebuild_xlam_release.py]  ← Build + Lock password
     ↓
 gafc_audit_helper_new.xlam ← File phân phối (Password + Obfuscated)
 ```

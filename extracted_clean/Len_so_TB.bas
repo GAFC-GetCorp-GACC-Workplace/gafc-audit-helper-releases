@@ -56,10 +56,12 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
     ' Dictionary map CODE -> ROW
     Set dictFS = CreateObject("Scripting.Dictionary")
     For j = 1 To UBound(arrFS, 1)
+        If IsError(arrFS(j, 1)) Or IsEmpty(arrFS(j, 1)) Then GoTo NextFS
         fsKey = Trim$(CStr(arrFS(j, 1)))
         If fsKey <> "" Then
             If Not dictFS.Exists(fsKey) Then dictFS.Add fsKey, j
         End If
+NextFS:
     Next j
 
     ' �?c TB
@@ -68,8 +70,8 @@ Public Sub Len_so_bao_cao(control As IRibbonControl)
     ' ===== X? L� =====
     For i = 1 To UBound(tbData, 1)
 
-        code1 = Trim$(CStr(tbData(i, 1)))
-        code2 = Trim$(CStr(tbData(i, 2)))
+        If IsError(tbData(i, 1)) Then code1 = "" Else code1 = Trim$(CStr(tbData(i, 1)))
+        If IsError(tbData(i, 2)) Then code2 = "" Else code2 = Trim$(CStr(tbData(i, 2)))
 
         val1 = 0: val2 = 0
         If IsNumeric(tbData(i, 8)) Then val1 = tbData(i, 8)

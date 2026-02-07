@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-Script `rebuild_xlam.py` hiện đã hỗ trợ **tự động khóa VBA project bằng password MÃ HÓA** sau khi build xong.
+Scripts `rebuild_xlam_dev.py` và `rebuild_xlam_release.py` hỗ trợ build dev/prod riêng biệt.
 
 ## Bảo mật nâng cao
 
@@ -28,17 +28,17 @@ Nếu không cài, script vẫn chạy nhưng chỉ dùng obfuscation (bảo m�
 
 ```bash
 # Development (khi đang code, không khóa VBA)
-python rebuild_xlam.py --dev
+python rebuild_xlam_dev.py
 
 # Production (build để deploy, có khóa VBA)
-python rebuild_xlam.py
+python rebuild_xlam_release.py
 ```
 
 ### Lần đầu tiên (Production build)
 
 1. Chạy script build:
    ```bash
-   python rebuild_xlam.py
+   python rebuild_xlam_release.py
    ```
 
 2. Script sẽ hỏi password:
@@ -61,7 +61,7 @@ python rebuild_xlam.py
 
 - Nếu đã lưu password vào `build_config.dat`:
   ```bash
-  python rebuild_xlam.py
+  python rebuild_xlam_release.py
   ```
   Script sẽ tự động giải mã và dùng password, không cần nhập lại
 
@@ -71,7 +71,7 @@ python rebuild_xlam.py
 
 **Cách 1: Development build (khuyến nghị khi đang code)**
 ```bash
-python rebuild_xlam.py --dev
+python rebuild_xlam_dev.py
 ```
 - Không hỏi password, tự động skip khóa VBA
 - Tiện lợi khi đang develop và cần debug code
@@ -119,6 +119,7 @@ Script sẽ tự động:
 ## Lưu ý
 
 - Nếu file source (`gafc_audit_helper.xlam`) đã bị khóa password, script sẽ tự động unlock trước khi xử lý
+- DO NOT use release output (gafc_audit_helper_new.xlam) as template; keep gafc_audit_helper.xlam unlocked
 - Password phải **giống nhau** cho cả unlock và lock
 - Nếu quên password, bạn cần unlock thủ công trong Excel trước khi chạy script
 

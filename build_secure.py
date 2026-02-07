@@ -33,9 +33,10 @@ def build_secure():
     print("\n[2/3] Updating build configuration...")
     print("-" * 60)
 
-    rebuild_script = BASE_DIR / "rebuild_xlam.py"
-    if rebuild_script.exists():
-        content = rebuild_script.read_text(encoding='utf-8')
+    core_script = BASE_DIR / "rebuild_xlam.py"
+    rebuild_script = BASE_DIR / "rebuild_xlam_release.py"
+    if core_script.exists():
+        content = core_script.read_text(encoding='utf-8')
 
         # Check if using obfuscated folder
         if 'extracted_obfuscated' not in content:

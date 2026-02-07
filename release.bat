@@ -39,7 +39,7 @@ echo.
 set OUT_PROD=gafc_audit_helper_new.xlam
 
 echo [0/5] Building XLAM (prod)...
-python rebuild_xlam.py
+python rebuild_xlam_release.py
 if errorlevel 1 (
     echo Build failed. Fix errors and try again.
     pause

@@ -19,10 +19,10 @@ MyPassword123  ← Thêm password vào đây
 
 ```bash
 # Development build (KHÔNG khóa VBA - dùng khi đang code)
-python rebuild_xlam.py --dev
+python rebuild_xlam_dev.py
 
 # Production build (CÓ khóa VBA - dùng khi deploy)
-python rebuild_xlam.py
+python rebuild_xlam_release.py
 ```
 
 **Script tự động:**
@@ -30,7 +30,7 @@ python rebuild_xlam.py
 - Unlock VBA (nếu file source đã khóa)
 - Import modules mới
 - Lock VBA lại với password (production mode)
-- **Make UNVIEWABLE** (production) - hiện "Project is unviewable" thay vì hỏi password
+- (Tùy chọn) `--unviewable` nếu muốn khóa không thể mở bằng password
 
 ## Unlock VBA để xem code
 
@@ -45,10 +45,10 @@ Sau đó mở VBA Editor và nhập password từ `vba_password.txt` để xem c
 ## Workflow khi đang develop
 
 1. **Chỉnh sửa code** trong `extracted_clean/*.bas`
-2. **Build dev version**: `python rebuild_xlam.py --dev`
-3. **Test** file `gafc_audit_helper_new.xlam`
+2. **Build dev version**: `python rebuild_xlam_dev.py`
+3. **Test** file `gafc_audit_helper_new_dev.xlam`
 4. **Lặp lại** bước 1-3 cho đến khi OK
-5. **Build production**: `python rebuild_xlam.py` (chỉ cần 1 lần cuối)
+5. **Build production**: `python rebuild_xlam_release.py` (chỉ cần 1 lần cuối)
 
 ## Extract code từ XLAM về .bas
 

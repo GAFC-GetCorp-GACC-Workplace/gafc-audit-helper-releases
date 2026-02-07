@@ -27,16 +27,19 @@ Public Sub rwtopricing(control As IRibbonControl)
     If lastRowRW >= 3 Then
         rwArr = wsRW.Range("C3:O" & lastRowRW).Value
         For j = 1 To UBound(rwArr, 1)
+            If IsError(rwArr(j, 1)) Or IsEmpty(rwArr(j, 1)) Then GoTo NextRW
             codeRW = Trim$(CStr(rwArr(j, 1)))
             If codeRW <> "" Then
                 If Not dictRW.Exists(codeRW) Then
                     dictRW.Add codeRW, Array(rwArr(j, 3), rwArr(j, 13), rwArr(j, 12), rwArr(j, 5))
                 End If
             End If
+NextRW:
         Next j
     End If
     Dim rwVal As Variant
     For i = 3 To lastRowTarget
+        If IsError(wsTarget.Cells(i, 2).Value) Then GoTo NextRWTarget
         codeTarget = Trim$(CStr(wsTarget.Cells(i, 2).Value))
         If codeTarget <> "" Then
             If dictRW.Exists(codeTarget) Then
@@ -47,9 +50,10 @@ Public Sub rwtopricing(control As IRibbonControl)
                 wsTarget.Cells(i, 6).Value = rwVal(3)
                 wsTarget.Cells(i, 7).FormulaR1C1 = "=RC[-3]/RC[-2]"
             Else
-                wsTarget.Cells(i, 13).Value = "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y mA?"
+                wsTarget.Cells(i, 13).Value = "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y m" & ChrW(227)
             End If
         End If
+NextRWTarget:
     Next i
     ' ?? Format s?: S? ti?n - S? lu?ng - Ðon giá
     With wsTarget

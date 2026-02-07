@@ -101,7 +101,7 @@ End Function
 Function IsTitleText(Txt As String) As Boolean
     Dim t As String
     t = LCase(Trim(Txt))
-    IsTitleText = (t = "nam nay" Or t = "nam tru?c" Or t = "s? cu?i nam" Or t = "s? d?u nam")
+    IsTitleText = (t = "nam nay" Or t = "nam tr" & ChrW(432) & "oc" Or t = "s" & ChrW(7889) & " cu" & ChrW(7889) & "i nam" Or t = "s" & ChrW(7889) & " d" & ChrW(7847) & "u nam")
 End Function
 Function IsActualFormula(cell As Range) As Boolean
     On Error Resume Next

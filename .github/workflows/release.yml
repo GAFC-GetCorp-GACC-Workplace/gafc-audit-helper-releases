@@ -26,17 +26,22 @@ jobs:
       - name: Verify XLAM file exists
         shell: pwsh
         run: |
-          if (-not (Test-Path "gafc_audit_helper.xlam")) {
-            Write-Error "gafc_audit_helper.xlam not found! Build it locally first."
+          # release.bat builds gafc_audit_helper_new.xlam (prod)
+          if (Test-Path "gafc_audit_helper_new.xlam") {
+            Write-Host "[OK] Found gafc_audit_helper_new.xlam (prod build)"
+          } elseif (Test-Path "gafc_audit_helper.xlam") {
+            Write-Host "[WARN] gafc_audit_helper_new.xlam not found, falling back to gafc_audit_helper.xlam"
+            Copy-Item "gafc_audit_helper.xlam" "gafc_audit_helper_new.xlam" -Force
+          } else {
+            Write-Error "No .xlam file found! Build it locally first (run release.bat)."
             exit 1
           }
-          Write-Host "[OK] Found gafc_audit_helper.xlam"
 
       - name: Calculate SHA256
         id: hash
         shell: pwsh
         run: |
-          $hash = (Get-FileHash "gafc_audit_helper.xlam" -Algorithm SHA256).Hash.ToLower()
+          $hash = (Get-FileHash "gafc_audit_helper_new.xlam" -Algorithm SHA256).Hash.ToLower()
           echo "SHA256=$hash" >> $env:GITHUB_OUTPUT
           Write-Host "SHA256: $hash"
 
@@ -46,7 +51,7 @@ jobs:
           $version = "${{ steps.version.outputs.VERSION }}"
           $sha256 = "${{ steps.hash.outputs.SHA256 }}"
           $date = Get-Date -Format "yyyy-MM-dd"
-          $fileSize = (Get-Item "gafc_audit_helper.xlam").Length
+          $fileSize = (Get-Item "gafc_audit_helper_new.xlam").Length
 
           # Read existing manifest to preserve changelog
           $existingManifest = $null
@@ -56,7 +61,7 @@ jobs:
 
           $manifest = @{
             latest = $version
-            download_url = "https://github.com/muaroi2002/gafc-audit-helper-releases/releases/download/v$version/gafc_audit_helper.xlam"
+            download_url = "https://github.com/muaroi2002/gafc-audit-helper-releases/releases/download/v$version/gafc_audit_helper_new.xlam"
             sha256 = $sha256
             release_date = $date
             release_notes = "Release version $version"
@@ -127,9 +132,9 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.VERSION }}"
 
-          # Copy XLAM
-          Copy-Item "gafc_audit_helper.xlam" "public-repo/gafc_audit_helper.xlam" -Force
-          Write-Host "[OK] Copied XLAM"
+          # Copy prod XLAM (giữ tên _new cho release asset, auto-update tải về sẽ rename)
+          Copy-Item "gafc_audit_helper_new.xlam" "public-repo/gafc_audit_helper_new.xlam" -Force
+          Write-Host "[OK] Copied gafc_audit_helper_new.xlam"
 
           # Copy BAT files (user-facing installers)
           $batFiles = @("install.bat", "update.bat", "uninstall.bat")
@@ -172,14 +177,17 @@ jobs:
           }
 
           # Create installer ZIP
+          # ZIP chứa gafc_audit_helper.xlam (KHÔNG có _new) để install script
+          # cài đúng tên vào XLSTART -> auto-update hoạt động đúng
           Write-Host "`nCreating installer package..."
           $zipPath = "gafc_audit_helper_installer.zip"
           if (Test-Path "public-repo/$zipPath") { Remove-Item "public-repo/$zipPath" -Force }
 
-          # Change to public-repo directory to create ZIP with correct structure
           Push-Location "public-repo"
           try {
-            # Compress files and folders (scripts/ folder will be preserved)
+            # Rename _new -> tên chuẩn cho ZIP (install script dùng tên file gốc)
+            Copy-Item "gafc_audit_helper_new.xlam" "gafc_audit_helper.xlam" -Force
+
             Compress-Archive -Path @(
               "gafc_audit_helper.xlam",
               "install.bat",
@@ -187,7 +195,11 @@ jobs:
               "uninstall.bat",
               "scripts"
             ) -DestinationPath $zipPath -Force
-            Write-Host "[OK] Created installer ZIP with correct structure"
+
+            # Dọn file tạm
+            Remove-Item "gafc_audit_helper.xlam" -Force
+
+            Write-Host "[OK] Created installer ZIP (contains gafc_audit_helper.xlam + scripts)"
           } finally {
             Pop-Location
           }
@@ -219,7 +231,7 @@ jobs:
           $notes += "- Hardware fingerprinting with multi-tier fallback`n"
           $notes += "- Dynamic validation intervals`n`n"
           $notes += "### Installation`n`n"
-          $notes += "Download gafc_audit_helper_installer.zip, extract and run install_audit_helper.ps1`n`n"
+          $notes += "Download ``gafc_audit_helper_installer.zip``, extract and run ``install.bat```n`n"
           $notes += "### SHA256 Hash`n``````n$sha256`n``````n`n"
           $notes += "See README.md for full documentation."
 
@@ -230,7 +242,12 @@ jobs:
           git push origin ":refs/tags/v$version" 2>$null
           git tag -d "v$version" 2>$null
 
-          gh release create "v$version" gafc_audit_helper.xlam gafc_audit_helper_installer.zip --title "Release v$version" --notes-file "release_notes.md"
+          # Upload cả xlam (cho auto-update) lẫn ZIP (cho user mới cài)
+          gh release create "v$version" `
+            "gafc_audit_helper_new.xlam" `
+            "gafc_audit_helper_installer.zip" `
+            --title "Release v$version" `
+            --notes-file "release_notes.md"
 
           Write-Host "Release created in public repo!"
 
@@ -242,6 +259,9 @@ jobs:
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host "  Version: v${{ steps.version.outputs.VERSION }}" -ForegroundColor White
           Write-Host "  SHA256: ${{ steps.hash.outputs.SHA256 }}" -ForegroundColor White
+          Write-Host "`nRelease assets:" -ForegroundColor Yellow
+          Write-Host "  - gafc_audit_helper_new.xlam (auto-update)" -ForegroundColor White
+          Write-Host "  - gafc_audit_helper_installer.zip (new install)" -ForegroundColor White
           Write-Host "`nPublic Release:" -ForegroundColor Yellow
           Write-Host "  https://github.com/muaroi2002/gafc-audit-helper-releases/releases/tag/v${{ steps.version.outputs.VERSION }}" -ForegroundColor Cyan
           Write-Host "`nManifest updated for auto-update" -ForegroundColor Yellow

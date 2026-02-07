@@ -50,6 +50,7 @@ Public Sub Xuly(control As IRibbonControl)
     Next i
     ' ? Bu?c 1: Luu toàn b? tài kho?n g?c + dánh d?u prefix d?c bi?t xu?t hi?n
     For i = 2 To lastRow
+        If IsError(wsSrc.Cells(i, 1).Value) Then GoTo NextSrcRow
         tkFull = Trim(wsSrc.Cells(i, 1).Value)
         If tkFull <> "" Then
             If Not allTKs.Exists(tkFull) Then allTKs.Add tkFull, True
@@ -57,6 +58,7 @@ Public Sub Xuly(control As IRibbonControl)
                 prefixSpecialInData(Left(tkFull, 3)) = True
             End If
         End If
+NextSrcRow:
     Next i
     ' ? Bu?c 2: B? sung mã d?c bi?t n?u có mã con xu?t hi?n
     For Each tkSpecial In specialDict.keys

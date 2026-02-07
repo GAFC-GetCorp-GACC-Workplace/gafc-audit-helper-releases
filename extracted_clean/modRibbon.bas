@@ -19,7 +19,7 @@ Public Sub OnShowAbout(control As IRibbonControl)
 
     ' Final fallback
     If Err.Number <> 0 Or Len(currentVer) = 0 Then
-        currentVer = "1.0.20"
+        currentVer = "1.1.1"
     End If
     On Error GoTo 0
 
@@ -31,7 +31,7 @@ Public Sub OnShowAbout(control As IRibbonControl)
           "Contact:" & vbCrLf & _
           "Email: info@globalauditing.com" & vbCrLf & _
           "Hotline: 0918 70 85 72" & vbCrLf & vbCrLf & _
-          "(c) 2025 GAFC"
+          "(c) 2026 GAFC"
 
     MsgBox msg, vbInformation, "About"
 End Sub

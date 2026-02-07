@@ -5,9 +5,10 @@
 # Flow:
 # 1. Update version in manifest + VBA code
 # 2. Build XLAM with new version
-# 3. Commit all changes
-# 4. Push to GitHub
-# 5. Create/update GitHub Release
+# 3. Commit all changes + tag
+# 4. Push to private repo (origin)
+# 5. Update manifest on public repo via API
+# 6. Create/update GitHub Release on public repo
 
 set -e  # Exit on error
 
@@ -15,7 +16,7 @@ set -e  # Exit on error
 trap 'echo "Release failed."; if [ -t 0 ]; then read -r -p "Press Enter to exit..."; fi' ERR
 
 # GitHub config
-GITHUB_USER="muaroi2002"
+GITHUB_USER="GAFC-GetCorp-GACC-Workplace"
 GITHUB_REPO="gafc-audit-helper-releases"
 
 # Load token from .github_token file (gitignored)
@@ -25,8 +26,8 @@ if [ ! -f "$TOKEN_FILE" ]; then
     echo "Create it with: echo 'your_token_here' > .github_token"
     exit 1
 fi
-GITHUB_TOKEN=$(cat "$TOKEN_FILE" | tr -d '\n\r')
-GITHUB_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
+# Export token for gh CLI to use
+export GITHUB_TOKEN=$(cat "$TOKEN_FILE" | tr -d '\n\r')
 
 VERSION=$1
 if [ -z "$VERSION" ]; then
@@ -55,7 +56,7 @@ echo "   - Updated ThisWorkbook.cls"
 
 # 2. Build
 echo "2. Building xlam..."
-python rebuild_xlam.py
+python rebuild_xlam_release.py
 
 # 3. Verify version in source files (VBA binary encoding is unreliable)
 echo "3. Verifying version in source files..."
@@ -78,13 +79,49 @@ fi
 # 5. Tag
 git tag -f "v$VERSION"
 
-# 6. Push with token
-echo "5. Pushing to GitHub..."
-git push "$GITHUB_URL" main --force
-git push "$GITHUB_URL" "v$VERSION" --force
+# 6. Push to private repo (origin) first
+echo "5. Pushing to private repo (origin)..."
+git push origin main
+git push origin "v$VERSION" --force
 
-# 7. Upload to GitHub Release (create if not exists)
-echo "6. Creating GitHub Release..."
+# 7. Update manifest on public repo via GitHub API (without pushing source code)
+echo "6. Updating manifest on public releases repo..."
+MANIFEST_CONTENT=$(base64 -w 0 releases/audit_tool.json)
+MANIFEST_SHA=$(gh api repos/${GITHUB_USER}/${GITHUB_REPO}/contents/releases/audit_tool.json --jq '.sha' 2>/dev/null || echo "")
+
+if [ -n "$MANIFEST_SHA" ]; then
+    # Update existing file
+    gh api repos/${GITHUB_USER}/${GITHUB_REPO}/contents/releases/audit_tool.json \
+        -X PUT \
+        -f message="release: update manifest for v$VERSION" \
+        -f content="$MANIFEST_CONTENT" \
+        -f sha="$MANIFEST_SHA" \
+        --silent
+else
+    # Create new file
+    gh api repos/${GITHUB_USER}/${GITHUB_REPO}/contents/releases/audit_tool.json \
+        -X PUT \
+        -f message="release: update manifest for v$VERSION" \
+        -f content="$MANIFEST_CONTENT" \
+        --silent
+fi
+echo "   Manifest updated on org repo"
+
+# Also update redirect repo for legacy users (muaroi2002/gafc-audit-helper-releases)
+echo "   Updating legacy redirect repo..."
+LEGACY_SHA=$(gh api repos/muaroi2002/gafc-audit-helper-releases/contents/releases/audit_tool.json --jq '.sha' 2>/dev/null || echo "")
+if [ -n "$LEGACY_SHA" ]; then
+    gh api repos/muaroi2002/gafc-audit-helper-releases/contents/releases/audit_tool.json \
+        -X PUT \
+        -f message="release: update manifest for v$VERSION" \
+        -f content="$MANIFEST_CONTENT" \
+        -f sha="$LEGACY_SHA" \
+        --silent
+    echo "   Legacy redirect repo updated"
+fi
+
+# 8. Upload to GitHub Release (create if not exists)
+echo "7. Creating GitHub Release..."
 if gh release view "v$VERSION" -R "${GITHUB_USER}/${GITHUB_REPO}" &>/dev/null; then
     gh release upload "v$VERSION" gafc_audit_helper_new.xlam --clobber -R "${GITHUB_USER}/${GITHUB_REPO}"
     echo "   Updated existing release"

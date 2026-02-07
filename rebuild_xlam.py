@@ -12,6 +12,7 @@ import base64
 import hashlib
 import os
 import gc
+import pythoncom
 
 try:
     import win32com.client  # type: ignore
@@ -42,6 +43,44 @@ VBEXT_CT_STD_MODULE = 1
 VBEXT_CT_CLASS_MODULE = 2
 VBEXT_CT_MSFORM = 3
 VBEXT_CT_DOC_MODULE = 100
+
+
+READ_ENCODINGS = [
+    "utf-8-sig",
+    "utf-8",
+    "cp1258",   # Vietnamese ANSI
+    "mbcs",     # Windows ANSI code page
+    "cp1252",
+    "latin-1",
+]
+
+
+def read_text_with_fallback(path: Path):
+    """Read text with encoding fallback. Returns (text, encoding)."""
+    last_err = None
+    for enc in READ_ENCODINGS:
+        try:
+            return path.read_text(encoding=enc), enc
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or UnicodeDecodeError("unknown", b"", 0, 1, "No valid encoding")
+
+
+def write_text_for_import(path: Path, content: str, preferred_encoding: str = "mbcs"):
+    """
+    Write temp files in ANSI (mbcs/cp1258) so VBIDE Import reads Vietnamese correctly.
+    Falls back to utf-8 only if ANSI encoding fails.
+    """
+    for enc in [preferred_encoding, "cp1258", "mbcs"]:
+        try:
+            path.write_text(content, encoding=enc)
+            return enc
+        except Exception:
+            continue
+    # Fallback (may cause mojibake in VBIDE import)
+    path.write_text(content, encoding="utf-8")
+    return "utf-8"
 
 
 def get_machine_key():
@@ -126,6 +165,50 @@ def find_excel_path():
             return candidate
 
     return None
+
+
+def _norm_path(path: Path) -> str:
+    try:
+        return os.path.normcase(str(path.resolve()))
+    except Exception:
+        return os.path.normcase(str(path))
+
+
+def same_path(a: Path, b: Path) -> bool:
+    return _norm_path(a) == _norm_path(b)
+
+
+def is_xlam_unviewable(xlam_path: Path) -> bool:
+    """
+    Detect the irreversible UNVIEWABLE patch by checking CMG/DPB/GC markers
+    inside xl/vbaProject.bin for all-'F' values.
+    """
+    import zipfile
+    import re
+
+    try:
+        with zipfile.ZipFile(xlam_path, 'r') as zin:
+            with zin.open("xl/vbaProject.bin") as f:
+                content = f.read()
+    except Exception:
+        return False
+
+    def _all_f(value: bytes) -> bool:
+        if not value:
+            return False
+        return all(c in (ord('F'), ord('f')) for c in value)
+
+    markers = [
+        rb'CMG="([0-9A-Fa-f]+)"',
+        rb'DPB="([0-9A-Fa-f]+)"',
+        rb'GC="([0-9A-Fa-f]+)"',
+    ]
+    for pattern in markers:
+        match = re.search(pattern, content)
+        if match and _all_f(match.group(1)):
+            return True
+
+    return False
 
 
 def is_file_locked(path):
@@ -246,18 +329,30 @@ def lock_vba_project_via_ui(workbook_path, password):
         app = Application(backend="uia").start(f'"{excel_path}" "{workbook_path}"')
         time.sleep(2)
 
+        # Focus Excel window to avoid sending keys to other apps (e.g. VS Code)
+        excel_main = app.window(class_name="XLMAIN")
+        excel_main.wait('visible', timeout=10)
+        excel_main.set_focus()
+
         # Open VBA Editor (Alt+F11)
-        send_keys('%{F11}')
+        try:
+            excel_main.type_keys('%{F11}', set_foreground=True)
+        except Exception:
+            send_keys('%{F11}')
         time.sleep(1)
 
         # Open Project Properties (Alt+T, P)
-        send_keys('%TP')
+        try:
+            excel_main.type_keys('%TP', set_foreground=True)
+        except Exception:
+            send_keys('%TP')
         time.sleep(1)
 
         # Find and interact with VBAProject Properties window
         try:
             dlg = app.window(title_re=".*VBAProject.*Properties.*")
             dlg.wait('visible', timeout=5)
+            dlg.set_focus()
 
             # Click Protection tab
             if dlg.child_window(title="Protection", control_type="TabItem").exists():
@@ -273,12 +368,27 @@ def lock_vba_project_via_ui(workbook_path, password):
             # Enter password in first field
             pwd_edit1 = dlg.child_window(control_type="Edit", found_index=0)
             pwd_edit1.click_input()
-            send_keys(password)
+            try:
+                pwd_edit1.set_edit_text(password)
+            except Exception:
+                pwd_edit1.type_keys(password, with_spaces=True, set_foreground=True)
             time.sleep(0.2)
 
             # Enter password in confirm field
-            send_keys('{TAB}')
-            send_keys(password)
+            try:
+                pwd_edit2 = dlg.child_window(control_type="Edit", found_index=1)
+                pwd_edit2.click_input()
+                try:
+                    pwd_edit2.set_edit_text(password)
+                except Exception:
+                    pwd_edit2.type_keys(password, with_spaces=True, set_foreground=True)
+            except Exception:
+                try:
+                    dlg.type_keys('{TAB}', set_foreground=True)
+                    dlg.type_keys(password, with_spaces=True, set_foreground=True)
+                except Exception:
+                    send_keys('{TAB}')
+                    send_keys(password)
             time.sleep(0.2)
 
             # Click OK
@@ -288,13 +398,29 @@ def lock_vba_project_via_ui(workbook_path, password):
             print("OK: VBA Project locked successfully via UI automation")
 
             # Close VBE
-            send_keys('%{F4}')  # Close VBE
+            try:
+                vbe = app.window(class_name_re="VBE7|VBE")
+                if vbe.exists(timeout=2):
+                    vbe.set_focus()
+                    vbe.close()
+                else:
+                    excel_main.type_keys('%{F4}', set_foreground=True)
+            except Exception:
+                send_keys('%{F4}')  # Close VBE
             time.sleep(0.5)
 
             # Save and close workbook
-            send_keys('^s')  # Save
+            try:
+                excel_main.set_focus()
+                excel_main.type_keys('^s', set_foreground=True)
+            except Exception:
+                send_keys('^s')  # Save
             time.sleep(1)
-            send_keys('%{F4}')  # Close Excel
+            try:
+                excel_main.set_focus()
+                excel_main.close()
+            except Exception:
+                send_keys('%{F4}')  # Close Excel
             time.sleep(1)
 
             return True
@@ -303,9 +429,23 @@ def lock_vba_project_via_ui(workbook_path, password):
             print(f"UI automation failed: {ui_error}")
             # Try to close everything
             try:
-                send_keys('%{F4}')  # Close dialog
-                send_keys('%{F4}')  # Close VBE
-                send_keys('%{F4}')  # Close Excel
+                try:
+                    dlg = app.window(title_re=".*VBAProject.*Properties.*")
+                    if dlg.exists(timeout=1):
+                        dlg.close()
+                except Exception:
+                    pass
+                try:
+                    vbe = app.window(class_name_re="VBE7|VBE")
+                    if vbe.exists(timeout=1):
+                        vbe.close()
+                except Exception:
+                    pass
+                try:
+                    if 'excel_main' in locals():
+                        excel_main.close()
+                except Exception:
+                    pass
             except:
                 pass
             return False
@@ -346,13 +486,24 @@ def unlock_vba_project_via_ui(workbook_path, password):
         app = Application(backend="uia").start(f'"{excel_path}" "{workbook_path}"')
         time.sleep(2)
 
+        # Focus Excel window to avoid sending keys to other apps (e.g. VS Code)
+        excel_main = app.window(class_name="XLMAIN")
+        excel_main.wait('visible', timeout=10)
+        excel_main.set_focus()
+
         # Open VBA Editor (Alt+F11)
-        send_keys('%{F11}')
+        try:
+            excel_main.type_keys('%{F11}', set_foreground=True)
+        except Exception:
+            send_keys('%{F11}')
         time.sleep(1)
 
         # Try to open Properties; handle password prompt if it appears
         for _ in range(2):
-            send_keys('%TP')
+            try:
+                excel_main.type_keys('%TP', set_foreground=True)
+            except Exception:
+                send_keys('%TP')
             time.sleep(1)
 
             try:
@@ -360,7 +511,10 @@ def unlock_vba_project_via_ui(workbook_path, password):
                 if pwd_dlg.exists(timeout=1):
                     pwd_edit = pwd_dlg.child_window(control_type="Edit")
                     pwd_edit.click_input()
-                    send_keys(password)
+                    try:
+                        pwd_edit.set_edit_text(password)
+                    except Exception:
+                        pwd_edit.type_keys(password, with_spaces=True, set_foreground=True)
                     time.sleep(0.2)
                     pwd_dlg.child_window(title="OK", control_type="Button").click_input()
                     time.sleep(0.5)
@@ -372,6 +526,7 @@ def unlock_vba_project_via_ui(workbook_path, password):
 
         dlg = app.window(title_re=".*VBAProject.*Properties.*")
         dlg.wait('visible', timeout=5)
+        dlg.set_focus()
 
         # Click Protection tab
         if dlg.child_window(title="Protection", control_type="TabItem").exists():
@@ -390,7 +545,10 @@ def unlock_vba_project_via_ui(workbook_path, password):
         for edit in edits[:2]:
             try:
                 edit.click_input()
-                send_keys('^a{BACKSPACE}')
+                try:
+                    edit.set_edit_text("")
+                except Exception:
+                    edit.type_keys('^a{BACKSPACE}', set_foreground=True)
                 time.sleep(0.1)
             except Exception:
                 pass
@@ -400,13 +558,29 @@ def unlock_vba_project_via_ui(workbook_path, password):
         time.sleep(0.5)
 
         # Close VBE
-        send_keys('%{F4}')
+        try:
+            vbe = app.window(class_name_re="VBE7|VBE")
+            if vbe.exists(timeout=2):
+                vbe.set_focus()
+                vbe.close()
+            else:
+                excel_main.type_keys('%{F4}', set_foreground=True)
+        except Exception:
+            send_keys('%{F4}')
         time.sleep(0.5)
 
         # Save and close workbook
-        send_keys('^s')
+        try:
+            excel_main.set_focus()
+            excel_main.type_keys('^s', set_foreground=True)
+        except Exception:
+            send_keys('^s')
         time.sleep(1)
-        send_keys('%{F4}')
+        try:
+            excel_main.set_focus()
+            excel_main.close()
+        except Exception:
+            send_keys('%{F4}')
         time.sleep(0.5)
 
         print("VBA project lock removed for dev output")
@@ -419,9 +593,23 @@ def unlock_vba_project_via_ui(workbook_path, password):
     except Exception as e:
         print(f"ERROR: Could not remove VBA lock: {e}")
         try:
-            send_keys('%{F4}')
-            send_keys('%{F4}')
-            send_keys('%{F4}')
+            try:
+                dlg = app.window(title_re=".*VBAProject.*Properties.*")
+                if dlg.exists(timeout=1):
+                    dlg.close()
+            except Exception:
+                pass
+            try:
+                vbe = app.window(class_name_re="VBE7|VBE")
+                if vbe.exists(timeout=1):
+                    vbe.close()
+            except Exception:
+                pass
+            try:
+                if 'excel_main' in locals():
+                    excel_main.close()
+            except Exception:
+                pass
         except Exception:
             pass
         return False
@@ -585,8 +773,21 @@ def inject_custom_ui(xlam_path):
 
 
 def copy_sources(output_path):
-    if not SOURCE_XLAM.exists():
-        print(f"ERROR: source xlam not found: {SOURCE_XLAM}")
+    source_path = SOURCE_XLAM
+    if not source_path.exists():
+        print(f"ERROR: source xlam not found: {source_path}")
+        sys.exit(1)
+    if same_path(source_path, output_path):
+        print("ERROR: output path is the SAME as the source template.")
+        print("Refusing to continue to avoid locking the template.")
+        print(f"Source: {source_path}")
+        print(f"Output: {output_path}")
+        sys.exit(1)
+    if is_xlam_unviewable(source_path):
+        print("ERROR: source template appears to be UNVIEWABLE (CMG/DPB/GC patched).")
+        print("Do NOT use a locked release output as the build template.")
+        print("Restore an unlocked template from backup, then retry.")
+        print(f"Template: {source_path}")
         sys.exit(1)
     if not MODULE_DIR.exists():
         print(f"ERROR: module folder not found: {MODULE_DIR}")
@@ -608,7 +809,7 @@ def copy_sources(output_path):
             sys.exit(1)
         print("File released successfully.")
 
-    shutil.copy2(SOURCE_XLAM, output_path)
+    shutil.copy2(source_path, output_path)
 
 
 def rebuild(dev_mode=False, make_unviewable=False):
@@ -623,23 +824,47 @@ def rebuild(dev_mode=False, make_unviewable=False):
     excel = None
     wb = None
     try:
-        excel = win32com.client.Dispatch("Excel.Application")
-        excel.Visible = False
-        excel.DisplayAlerts = False
+        pythoncom.CoInitialize()
+        try:
+            excel = win32com.client.DispatchEx("Excel.Application")
+        except Exception:
+            try:
+                excel = win32com.client.gencache.EnsureDispatch("Excel.Application")
+            except Exception:
+                excel = win32com.client.Dispatch("Excel.Application")
+        # Sanity check: Workbooks should exist
+        if not hasattr(excel, "Workbooks"):
+            try:
+                excel = win32com.client.DispatchEx("Excel.Application")
+            except Exception:
+                pass
+        try:
+            excel.Visible = False
+        except Exception as e:
+            print(f"WARNING: Could not set Excel.Visible: {e}")
+        try:
+            excel.DisplayAlerts = False
+        except Exception as e:
+            print(f"WARNING: Could not set Excel.DisplayAlerts: {e}")
         wb = excel.Workbooks.Open(str(output_xlam))
         vb_proj = wb.VBProject
 
-        # Unlock if source file is password protected
-        unlock_vba_project(vb_proj, password)
+        # Detect locked state first, then unlock if needed
+        locked_initially = False
         try:
-            # Confirm unlocked; if not, stop early with guidance
             _ = vb_proj.VBComponents.Count
         except Exception:
-            print("ERROR: VBA project is locked and could not be unlocked.")
-            print(f"Provide the password in {PASSWORD_FILE.name} even for --dev builds.")
-            wb.Close(SaveChanges=False)
-            excel.Quit()
-            sys.exit(1)
+            locked_initially = True
+            unlock_vba_project(vb_proj, password)
+            try:
+                # Confirm unlocked; if not, stop early with guidance
+                _ = vb_proj.VBComponents.Count
+            except Exception:
+                print("ERROR: VBA project is locked and could not be unlocked.")
+                print(f"Provide the password in {PASSWORD_FILE.name} even for --dev builds.")
+                wb.Close(SaveChanges=False)
+                excel.Quit()
+                sys.exit(1)
 
         to_remove = []
         for comp in vb_proj.VBComponents:
@@ -674,17 +899,10 @@ def rebuild(dev_mode=False, make_unviewable=False):
             if stem == "thisworkbook":
                 print(f"Updating ThisWorkbook code from: {path.name}")
                 try:
-                    # Read file with encoding support
-                    code = None
-                    for encoding in ['utf-8', 'cp1252', 'latin-1']:
-                        try:
-                            with open(path, 'r', encoding=encoding) as f:
-                                code = f.read()
-                            break
-                        except UnicodeDecodeError:
-                            continue
-
-                    if code is None:
+                    # Read file with encoding fallback
+                    try:
+                        code, _enc = read_text_with_fallback(path)
+                    except Exception:
                         print(f"  [WARNING] Could not read ThisWorkbook.cls: encoding error")
                         continue
 
@@ -748,17 +966,10 @@ def rebuild(dev_mode=False, make_unviewable=False):
 
             # Check if file has Attribute VB_Name, if not add it
             try:
-                # Try reading with different encodings
-                content = None
-                for encoding in ['utf-8', 'cp1252', 'latin-1']:
-                    try:
-                        with open(path, 'r', encoding=encoding) as f:
-                            content = f.read()
-                        break
-                    except UnicodeDecodeError:
-                        continue
-
-                if content is None:
+                # Read file with encoding fallback
+                try:
+                    content, _enc = read_text_with_fallback(path)
+                except Exception:
                     print(f"  [WARNING] Could not read {path.name}: encoding error")
                     continue
 
@@ -795,8 +1006,7 @@ def rebuild(dev_mode=False, make_unviewable=False):
 
                 # Always write to temp file (to apply version replacement)
                 temp_path = path.parent / f"{path.stem}_temp{path.suffix}"
-                with open(temp_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
+                write_text_for_import(temp_path, content)
 
                 # Import from temp file
                 print(f"Importing: {path.name}")
@@ -850,17 +1060,24 @@ def rebuild(dev_mode=False, make_unviewable=False):
 
         unlock_ok = None
         if dev_mode:
-            if password:
+            if password and locked_initially:
                 print("")
                 print("Ensuring VBA project is unlocked for dev build...")
                 unlock_ok = unlock_vba_project_via_ui(output_xlam, password)
             else:
                 unlock_ok = True
 
-        # Skip UI automation (unreliable), go straight to unviewable method
-        lock_success = False
+            # Make sure file is released after UI automation (if any)
+            if not wait_for_file_release(output_xlam, timeout_sec=10):
+                print(f"WARNING: output file still in use after dev unlock: {output_xlam}")
 
-        # Make VBA unviewable (binary patch) - more reliable than UI automation
+        lock_success = False
+        if not dev_mode and password and not make_unviewable:
+            print("")
+            print("Locking VBA project with password via UI automation...")
+            lock_success = lock_vba_project_via_ui(output_xlam, password)
+
+        # Make VBA unviewable (binary patch) - irreversible protection
         unviewable_applied = False
         if make_unviewable and not dev_mode and password:
             print("")
@@ -876,7 +1093,10 @@ def rebuild(dev_mode=False, make_unviewable=False):
                 sys.exit(1)
             unviewable_applied = make_vba_unviewable(output_xlam)
 
-        inject_custom_ui(output_xlam)
+        if wait_for_file_release(output_xlam, timeout_sec=10):
+            inject_custom_ui(output_xlam)
+        else:
+            print(f"WARNING: output file is still locked, skipping customUI injection: {output_xlam}")
 
         print("")
         print("=" * 80)
@@ -903,9 +1123,9 @@ def rebuild(dev_mode=False, make_unviewable=False):
                     print(f"  Password: {password}")
                     print("  Users MUST enter password to view/edit VBA code")
                 elif unviewable_applied:
-                    print("WARNING: VBA Project set to UNVIEWABLE (fallback method)")
+                    print("WARNING: VBA Project set to UNVIEWABLE (irreversible)")
                     print("  Code cannot be viewed even with password")
-                    print(f"  To unlock: python unlock_vba.py {output_xlam.name}")
+                    print("  Recovery requires restoring from backup/template")
                 else:
                     print("ERROR: VBA protection FAILED!")
                     print("  Code is NOT protected and can be viewed by anyone!")
@@ -918,6 +1138,10 @@ def rebuild(dev_mode=False, make_unviewable=False):
                 print("INFO: VBA Project is UNLOCKED (no password configured)")
 
         print("=" * 80)
+        try:
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
     except Exception as exc:  # pragma: no cover
         print(f"ERROR: {exc}", file=sys.stderr)
         if wb:
@@ -930,27 +1154,34 @@ def rebuild(dev_mode=False, make_unviewable=False):
                 excel.Quit()
             except Exception:
                 pass
+        try:
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
         raise
 
 
 if __name__ == "__main__":
     import argparse
+    print("NOTE: Prefer rebuild_xlam_dev.py (dev) or rebuild_xlam_release.py (prod).")
     parser = argparse.ArgumentParser(
         description='Rebuild XLAM with VBA modules from extracted_clean',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  python rebuild_xlam.py           # Production build (with password lock)
-  python rebuild_xlam.py --dev     # Development build (no password lock)
+  python rebuild_xlam_release.py             # Production build (password lock)
+  python rebuild_xlam_release.py --unviewable  # Production build (irreversible)
+  python rebuild_xlam_dev.py                 # Development build (unlocked)
+  python rebuild_xlam.py --dev               # Legacy dev flag
         '''
     )
     parser.add_argument('--dev', action='store_true',
                         help='Development mode: build without locking; still needs password to unlock source if it is locked')
     parser.add_argument('--unviewable', dest='unviewable', action='store_true',
-                        help='After locking, patch VBA project to be unviewable (harder to reverse)')
+                        help='Apply irreversible UNVIEWABLE patch (cannot unlock even with password)')
     parser.add_argument('--no-unviewable', dest='unviewable', action='store_false',
                         help='Skip unviewable patch (keep normal password prompt)')
-    parser.set_defaults(unviewable=True)  # Apply unviewable protection by default
+    parser.set_defaults(unviewable=False)  # Safer default: normal password lock
     args = parser.parse_args()
 
     rebuild(dev_mode=args.dev, make_unviewable=args.unviewable)

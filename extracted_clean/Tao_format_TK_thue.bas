@@ -16,6 +16,9 @@ Public Sub Tra_cuu(control As IRibbonControl)
         If ws.Name Like "Sheet*" Then ws.Delete
     Next ws
     Application.DisplayAlerts = True
+    For Each ws In wb.Sheets
+        ws.Cells.Font.Name = "Times New Roman"
+    Next ws
     InfoToast "Done"
 End Sub
 '=====================================================
@@ -104,7 +107,7 @@ Sub TaoBangTNCN_Merge_InWorkbook(wb As Workbook)
     ws.Range("A1:Q1").Merge
     '--- Nh?p d? li?u sau khi merge ---
     ws.Range("A1").Value = "T" & ChrW(7892) & "NG H" & ChrW(7906) & "P S" & ChrW(7888) & " LI" & ChrW(7878) & "U K" & ChrW(202) & " KHAI THU" & ChrW(7870) & " THU NH" & ChrW(7852) & "P C" & ChrW(193) & " NH" & ChrW(194) & "N T" & ChrW(7914) & " TI" & ChrW(7872) & "N L" & ChrW(431) & ChrW(416) & "NG, TI" & ChrW(7872) & "N C" & ChrW(212) & "NG"
-    ws.Range("A2").Value = "Tên công ty"
+    ws.Range("A2").Value = "T" & ChrW(234) & "n c" & ChrW(244) & "ng ty"
     ws.Range("B2").Value = "K" & ChrW(7923) & " t" & ChrW(237) & "nh thu" & ChrW(7871)
     ws.Range("C2").Value = "L" & ChrW(7847) & "n k" & ChrW(234) & " khai"
     ws.Range("D2").Value = "T" & ChrW(7893) & "ng s" & ChrW(7889) & " lao " & ChrW(273) & ChrW(7897) & "ng"
@@ -169,7 +172,7 @@ Sub TaoBangThueNTNN_Merge_InWorkbook(wb As Workbook)
     ws.Range("L2:L3").Merge
     ws.Range("A1:L1").Merge
     '--- Nh?p d? li?u sau khi merge ---
-    ws.Range("A2").Value = "Tên công ty"
+    ws.Range("A2").Value = "T" & ChrW(234) & "n c" & ChrW(244) & "ng ty"
     ws.Range("B2").Value = "K" & ChrW(7923) & " t" & ChrW(237) & "nh thu" & ChrW(7871)
     ws.Range("C2").Value = "L" & ChrW(7847) & "n k" & ChrW(234) & " khai"
     ws.Range("D2").Value = "Doanh thu ch" & ChrW(432) & "a bao g" & ChrW(7891) & "m thu" & ChrW(7871) & " GTGT"

@@ -295,6 +295,7 @@ Private Function CleanOppLabel(v As Variant) As String
 End Function
 Private Function NormalizeAccountLocal(v As Variant) As String
     Dim s As String
+    If IsError(v) Or IsEmpty(v) Then NormalizeAccountLocal = "": Exit Function
     s = Trim$(CStr(v))
     If s = "" Then
         NormalizeAccountLocal = ""
@@ -683,6 +684,7 @@ Private Function FindColumnByHeader(ws As Worksheet, names As Variant, defaultCo
 End Function
 Private Function NormalizeHeader(v As Variant) As String
     Dim s As String
+    If IsError(v) Or IsEmpty(v) Then NormalizeHeader = "": Exit Function
     s = LCase$(Trim$(CStr(v)))
     s = RemoveAccentsAscii(s)
     NormalizeHeader = s

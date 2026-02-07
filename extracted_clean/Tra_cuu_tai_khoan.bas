@@ -14,7 +14,7 @@ Public Sub Tracode(control As IRibbonControl)
     Set ws = RequireSheet(wb, "TB", "Chua co sheet 'TB'. Hay tao TB truoc.")
     If ws Is Nothing Then Exit Sub
     Set dict = CreateObject("Scripting.Dictionary")
-    ' ? B?ng tra mã
+    ' ? B?ng tra mï¿½
     dict.Add "111", Array("111", "")
     dict.Add "112", Array("112", "")
     dict.Add "113", Array("113", "")
@@ -99,14 +99,15 @@ Public Sub Tracode(control As IRibbonControl)
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
-    ' ?? Tìm s? dòng
+    ' ?? Tï¿½m s? dï¿½ng
     lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
-    ' ?? Ð?c toàn b? d? li?u c?t C vào m?ng (tài kho?n)
+    ' ?? ï¿½?c toï¿½n b? d? li?u c?t C vï¿½o m?ng (tï¿½i kho?n)
 inputArr = ws.Range("C2:C" & lastRow).Value
     ReDim outputArr(1 To UBound(inputArr), 1 To 2) ' Code1, Code2
-    ' ?? X? lý t?ng dòng trong m?ng
+    ' ?? X? lï¿½ t?ng dï¿½ng trong m?ng
     For i = 1 To UBound(inputArr)
-        tk = Trim(CStr(inputArr(i, 1))) ' Ép v? chu?i
+        If IsError(inputArr(i, 1)) Or IsEmpty(inputArr(i, 1)) Then GoTo NextTK
+        tk = Trim(CStr(inputArr(i, 1))) ' Ep ve chuoi
         If dict.Exists(tk) Then
             tempVal = dict(tk)
             outputArr(i, 1) = tempVal(0)
@@ -115,12 +116,13 @@ inputArr = ws.Range("C2:C" & lastRow).Value
             outputArr(i, 1) = ""
             outputArr(i, 2) = ""
         End If
+NextTK:
     Next i
-    ' ?? Ghi toàn b? k?t qu? ra c?t A:B m?t l?n
+    ' ?? Ghi toï¿½n b? k?t qu? ra c?t A:B m?t l?n
     ws.Range("A2:B" & lastRow).Value = outputArr
-    ' ?? Khôi ph?c cài d?t
+    ' ?? Khï¿½i ph?c cï¿½i d?t
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
     Application.EnableEvents = True
-    MsgBox "?? Ðã tra c?u xong Code1 và Code2 v?i t?c d? t?i uu!", vbInformation
+    MsgBox "?? ï¿½ï¿½ tra c?u xong Code1 vï¿½ Code2 v?i t?c d? t?i uu!", vbInformation
 End Sub

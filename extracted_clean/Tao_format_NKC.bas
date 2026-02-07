@@ -18,10 +18,9 @@ Public Sub Tao_for_NKC(control As IRibbonControl)
     Set ws = wb.Sheets(1)
     ws.Name = "NKC"
     ws.Activate
+    ws.Cells.Font.Name = "Times New Roman"
     ' Khai báo danh sách tiêu d?
-    header = Array("Ng" & ChrW(224) & "y h" & ChrW(7841) & "ch to" & ChrW(225) & "n", "Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915), "Th" & ChrW(225) & "ng", _
-                   "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n", "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i", "N" & ChrW(7907), "Có", "N" & ChrW(7907) & " TK", "Có TK", _
-                   "S" & ChrW(7889) & " ti" & ChrW(7873) & "n", "M" & ChrW(227) & " " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "T" & ChrW(234) & "n " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "Code")
+    header = Array("Ng" & ChrW(224) & "y ch" & ChrW(7913) & "ng t" & ChrW(7915), "S" & ChrW(7889) & " h" & ChrW(243) & "a " & ChrW(273) & ChrW(417) & "n", "Di" & ChrW(7877) & "n gi" & ChrW(7843) & "i", "N" & ChrW(7907) & " TK", "C" & ChrW(243) & " TK", "S" & ChrW(7889) & " ti" & ChrW(7873) & "n", "Ng" & ChrW(224) & "y ho" & ChrW(7841) & "ch to" & ChrW(225) & "n", "Th" & ChrW(225) & "ng", "N" & ChrW(7907), "C" & ChrW(243), "M" & ChrW(227) & " " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "T" & ChrW(234) & "n " & ChrW(273) & ChrW(7889) & "i t" & ChrW(432) & ChrW(7907) & "ng", "Code")
     ' Ghi tiêu d? vào hàng 2
     For i = LBound(header) To UBound(header)
         ws.Cells(2, i + 1).Value = header(i)
