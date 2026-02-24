@@ -13,7 +13,7 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
     Dim ngayHT As Variant
 
     On Error Resume Next
-    lastRow = wsNKC.Cells(wsNKC.Rows.Count, 1).End(xlUp).Row
+    lastRow = GetLastUsedRow(wsNKC)
     On Error GoTo 0
 
     If lastRow < 3 Then Exit Sub
@@ -218,6 +218,34 @@ Private Function GetLastUsedColumn(ws As Worksheet) As Long
     End If
 End Function
 
+Private Function GetLastUsedRow(ws As Worksheet) As Long
+    Dim lastCell As Range
+    On Error Resume Next
+    Set lastCell = ws.Cells.Find(What:="*", LookIn:=xlValues, SearchOrder:=xlByRows, SearchDirection:=xlPrevious)
+    On Error GoTo 0
+    If lastCell Is Nothing Then
+        GetLastUsedRow = 0
+    Else
+        GetLastUsedRow = lastCell.Row
+    End If
+End Function
+
+Private Function GetLastUsedRowInCol(ws As Worksheet, ByVal colIndex As Long) As Long
+    Dim lastCell As Range
+    On Error Resume Next
+    Set lastCell = ws.Columns(colIndex).Find(What:="*", LookIn:=xlValues, SearchOrder:=xlByRows, SearchDirection:=xlPrevious)
+    On Error GoTo 0
+    If lastCell Is Nothing Then
+        GetLastUsedRowInCol = 0
+    Else
+        GetLastUsedRowInCol = lastCell.Row
+    End If
+End Function
+
+Private Function AmountKey(ByVal v As Double) As String
+    AmountKey = Format$(Round(v, 2), "0.00")
+End Function
+
 
 
 ' Create NKC template for manual data entry
@@ -274,7 +302,7 @@ Public Sub Tao_Template_NKC(control As IRibbonControl)
 
     InfoToast "NKC template created successfully! Paste data từ dòng 3."
     FixClearFilterButton wsTemplate
-    ApplyWorkbookFont wb, "Times New Roman"
+    If Not fastMode Then ApplyWorkbookFont wb, "Times New Roman"
 End Sub
 Public Sub Clear_NKC_Filter()
     Dim ws As Worksheet
@@ -424,9 +452,18 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim wsNKCExists As Worksheet
     Dim isTemplateNKC As Boolean
     Dim includeReview As Boolean
+    Dim maxGroupSize As Long
     Dim oldCalc As XlCalculation
     Dim oldScreen As Boolean
     Dim oldEvents As Boolean
+    Dim oldStatus As Variant
+    Const SAFE_MAX_GROUP_ROWS As Long = 2000
+    Const FAST_FORCE_ROWS As Long = 120000
+    Const FAST_AUTO_HEAVY As Boolean = True
+    Const CHUNK_WRITE_ROWS As Long = 50000
+    Const LEGACY_FAST_ROWS As Long = 50000
+    Dim fastMode As Boolean
+    Dim legacyMode As Boolean
     ' Mac dinh: xu ly du lieu tho -> co cot Can review
     includeReview = True
 
@@ -434,6 +471,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     oldScreen = Application.ScreenUpdating
     oldCalc = Application.Calculation
     oldEvents = Application.EnableEvents
+    oldStatus = Application.StatusBar
 
     ' Check if NKC sheet already exists (user used template)
     On Error Resume Next
@@ -485,6 +523,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     If lastColSrc < 7 Then lastColSrc = 7
     arrData = wsNguon.Range(wsNguon.Cells(2, 1), wsNguon.Cells(lastRow, lastColSrc)).Value
     rowCount = UBound(arrData, 1)
+    legacyMode = (rowCount <= LEGACY_FAST_ROWS)
+    fastMode = (rowCount >= FAST_FORCE_ROWS)
+    If Not legacyMode Then Application.StatusBar = "Dang doc du lieu NKC..."
     ReDim arrMaCT(1 To rowCount)
     ReDim arrNgay(1 To rowCount)
     ReDim arrDienGiai(1 To rowCount)
@@ -508,6 +549,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
             End If
         Next j
     End If
+    If Not legacyMode Then Application.StatusBar = "Dang xu ly du lieu (" & rowCount & " dong)..."
     For i = 1 To rowCount
         If IsError(arrData(i, 1)) Then arrMaCT(i) = "" Else arrMaCT(i) = Trim$(CStr(arrData(i, 1)))
         arrNgay(i) = arrData(i, 2)
@@ -534,7 +576,18 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
                 arrKey(i) = arrMaCT(i) & "|" & Trim$(CStr(arrNgay(i)))
             End If
         End If
+        If (i Mod 5000) = 0 Then
+            If Not legacyMode Then
+                Application.StatusBar = "Dang xu ly du lieu (" & i & "/" & rowCount & ")..."
+                DoEvents
+            End If
+        End If
     Next i
+    ' Neu khong co nhom lon, uu tien duong xu ly cu cho nhanh
+    If maxGroupSize <= SAFE_MAX_GROUP_ROWS Then
+        legacyMode = True
+        fastMode = False
+    End If
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
@@ -567,11 +620,19 @@ End With
 EnsureNKCHeader wsKetQua, True, extraHeaders
     Set dictGroup = CreateObject("Scripting.Dictionary")
     ' Nhom du lieu theo MaCT|Ngay
+    If Not legacyMode Then Application.StatusBar = "Dang nhom du lieu..."
     For i = 1 To rowCount
         If arrMaCT(i) <> "" Then
             key = arrKey(i)
             If Not dictGroup.Exists(key) Then dictGroup.Add key, New Collection
             dictGroup(key).Add i
+            If dictGroup(key).Count > maxGroupSize Then maxGroupSize = dictGroup(key).Count
+        End If
+        If (i Mod 5000) = 0 Then
+            If Not legacyMode Then
+                Application.StatusBar = "Dang nhom du lieu (" & i & "/" & rowCount & ")..."
+                DoEvents
+            End If
         End If
     Next i
     ' ========== BUOC 1: XAC DINH NHOM "BAN" ==========
@@ -579,7 +640,17 @@ EnsureNKCHeader wsKetQua, True, extraHeaders
     Dim dictDirty As Object
     Set dictDirty = CreateObject("Scripting.Dictionary")
     Set pairCache = CreateObject("Scripting.Dictionary")
+    Dim groupIndex As Long, groupTotal As Long
+    groupIndex = 0
+    groupTotal = dictGroup.Count
     For Each key In dictGroup.keys
+        groupIndex = groupIndex + 1
+        If (groupIndex Mod 50) = 0 Then
+            If Not legacyMode Then
+                Application.StatusBar = "Dang xu ly nhom " & groupIndex & "/" & groupTotal & "..."
+                DoEvents
+            End If
+        End If
         Dim isDirty As Boolean
         isDirty = False
         For Each r In dictGroup(key)
@@ -602,13 +673,67 @@ EnsureNKCHeader wsKetQua, True, extraHeaders
     colCount = colKhac + extraCount + IIf(includeReview, 1, 0)
 
     If includeReview Then colReview = colKhac + extraCount + 1
-    ReDim outputArr(1 To (lastRow - 1) * 10, 1 To colCount)
+    Dim initialCap As Long
+    initialCap = rowCount * 2
+    If initialCap < 1000 Then initialCap = 1000
+    ReDim outputArr(1 To initialCap, 1 To colCount)
     Dim dongOut As Long
     dongOut = 1
     For Each key In dictGroup.keys
         Dim dsNoEntries As Collection, dsCoEntries As Collection
         Set dsNoEntries = New Collection
         Set dsCoEntries = New Collection
+        Dim groupSize As Long
+        groupSize = dictGroup(key).Count
+        If groupSize > SAFE_MAX_GROUP_ROWS Then
+            fastMode = True
+            Application.StatusBar = "Nhom qua lon (" & groupSize & " dong) - xuat nhanh can review..."
+            Dim cntFast As Long
+            cntFast = 0
+            For Each r In dictGroup(key)
+                If arrNo(r) <> 0 Then
+                    If dongOut > UBound(outputArr, 1) Then
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                    End If
+                    outputArr(dongOut, 1) = arrNgay(r)
+                    outputArr(dongOut, 2) = arrMaCT(r)
+                    outputArr(dongOut, 3) = arrDienGiai(r)
+                    outputArr(dongOut, 4) = arrTK(r)
+                    outputArr(dongOut, 5) = ""
+                    outputArr(dongOut, 6) = arrNo(r)
+                    outputArr(dongOut, 7) = arrNgay(r)
+                    outputArr(dongOut, 8) = arrMonth(r)
+                    outputArr(dongOut, 9) = arrTK3(r)
+                    outputArr(dongOut, 10) = ""
+                    outputArr(dongOut, colKhac) = arrKhac(r)
+                    FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, r
+                    If includeReview Then outputArr(dongOut, colReview) = "X"
+                    dongOut = dongOut + 1
+                End If
+                If arrCo(r) <> 0 Then
+                    If dongOut > UBound(outputArr, 1) Then
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                    End If
+                    outputArr(dongOut, 1) = arrNgay(r)
+                    outputArr(dongOut, 2) = arrMaCT(r)
+                    outputArr(dongOut, 3) = arrDienGiai(r)
+                    outputArr(dongOut, 4) = ""
+                    outputArr(dongOut, 5) = arrTK(r)
+                    outputArr(dongOut, 6) = arrCo(r)
+                    outputArr(dongOut, 7) = arrNgay(r)
+                    outputArr(dongOut, 8) = arrMonth(r)
+                    outputArr(dongOut, 9) = ""
+                    outputArr(dongOut, 10) = arrTK3(r)
+                    outputArr(dongOut, colKhac) = arrKhac(r)
+                    FillExtraFromOne outputArr, dongOut, extraCount, colExtraStart, arrExtra, r
+                    If includeReview Then outputArr(dongOut, colReview) = "X"
+                    dongOut = dongOut + 1
+                End If
+                cntFast = cntFast + 1
+                If (cntFast Mod 500) = 0 Then DoEvents
+            Next r
+            GoTo NextGroup
+        End If
         For Each r In dictGroup(key)
             Dim tienNoGoc As Double, tienCoGoc As Double
             tienNoGoc = arrNo(r)
@@ -633,12 +758,17 @@ EnsureNKCHeader wsKetQua, True, extraHeaders
         Dim totalNo As Double, totalCo As Double
         Dim canFastPath As Boolean
         Dim allowCrossSign As Boolean, crossSignExactOnly As Boolean
+        Dim mapCo As Object, keyAmt As String, keyOpp As String
+        Dim matchedCount As Long, idxCoMatch As Long
+        Dim coll As Collection
+        Dim skipDeepPass As Boolean
         ' Neu can xu ly truong hop co ca am/duong trong 1 ma CT
         ' allowCrossSign = True: cho phep ghep cheo dau (am/duong)
         ' crossSignExactOnly = True: chi cho phep ghep cheo dau khi so tien khop 1-1
         allowCrossSign = True
         crossSignExactOnly = True
         ' Lay trang thai "ban" cua nhom
+        skipDeepPass = (groupSize > SAFE_MAX_GROUP_ROWS)
         If dsNoEntries.Count = 0 Or dsCoEntries.Count = 0 Then
             ' Output single-side entries for review
             For idxNo = 1 To dsNoEntries.Count
@@ -803,6 +933,87 @@ EnsureNKCHeader wsKetQua, True, extraHeaders
             GoTo NextGroup
         End If
 SkipFastPath:
+        If Not legacyMode Then
+            ' ========== QUICK MATCH BY AMOUNT (hash) ==========
+            ' Ghep nhanh theo so tien trung khop de giam nhom lon
+            Set mapCo = CreateObject("Scripting.Dictionary")
+            For idxCo = 1 To dsCoEntries.Count
+                keyAmt = AmountKey(dsCoEntries(idxCo)(1))
+                If Not mapCo.Exists(keyAmt) Then
+                    Set coll = New Collection
+                    mapCo.Add keyAmt, coll
+                End If
+                mapCo(keyAmt).Add idxCo
+            Next idxCo
+            matchedCount = 0
+            For idxNo = 1 To dsNoEntries.Count
+                entryNo = dsNoEntries(idxNo)
+                rNo = entryNo(0)
+                tienNoEntry = entryNo(1)
+                keyAmt = AmountKey(tienNoEntry)
+                idxCoMatch = 0
+                If mapCo.Exists(keyAmt) Then
+                    Set coll = mapCo(keyAmt)
+                    If coll.Count > 0 Then
+                        idxCoMatch = coll(1)
+                        coll.Remove 1
+                    End If
+                ElseIf allowCrossSign And crossSignExactOnly Then
+                    keyOpp = AmountKey(-tienNoEntry)
+                    If mapCo.Exists(keyOpp) Then
+                        Set coll = mapCo(keyOpp)
+                        If coll.Count > 0 Then
+                            idxCoMatch = coll(1)
+                            coll.Remove 1
+                        End If
+                    End If
+                End If
+                If idxCoMatch > 0 Then
+                    entryCo = dsCoEntries(idxCoMatch)
+                    rCo = entryCo(0)
+                    tkNo = arrTK(rNo)
+                    tkCo = arrTK(rCo)
+                    Dim dgNoQuick As String, dgCoQuick As String
+                    Dim sameDGQuick As Boolean, samePrefixQuick As Boolean
+                    dgNoQuick = NormalizeDG(arrDienGiai(rNo))
+                    dgCoQuick = NormalizeDG(arrDienGiai(rCo))
+                    sameDGQuick = (dgNoQuick = dgCoQuick)
+                    samePrefixQuick = (Left$(tkNo, 3) = Left$(tkCo, 3))
+                    If Not (sameDGQuick Or samePrefixQuick) Then GoTo NextNoQuick
+                    If dongOut > UBound(outputArr, 1) Then
+                        ReDim Preserve outputArr(1 To UBound(outputArr, 1) * 2, 1 To colCount)
+                    End If
+                    khacValFast = arrKhac(rNo)
+                    If IsError(khacValFast) Or IsEmpty(khacValFast) Then khacValFast = arrKhac(rCo) _
+                    Else: If Len(Trim$(CStr(khacValFast))) = 0 Then khacValFast = arrKhac(rCo)
+                    outputArr(dongOut, 1) = arrNgay(rNo)  ' Ngay chung tu
+                    outputArr(dongOut, 2) = arrMaCT(rNo)  ' So CT
+                    outputArr(dongOut, 3) = arrDienGiai(rNo)  ' Dien giai
+                    outputArr(dongOut, 4) = arrTK(rNo)  ' TK No (full)
+                    outputArr(dongOut, 5) = arrTK(rCo)  ' TK Co (full)
+                    outputArr(dongOut, 6) = tienNoEntry     ' So tien (giu dung dau)
+                    outputArr(dongOut, 7) = arrNgay(rNo)  ' Ngay hach toan
+                    outputArr(dongOut, 8) = arrMonth(rNo)  ' Thang
+                    outputArr(dongOut, 9) = arrTK3(rNo)  ' No (3 ky tu)
+                    outputArr(dongOut, 10) = arrTK3(rCo)  ' Co (3 ky tu)
+                    outputArr(dongOut, colKhac) = khacValFast     ' Khac
+                    FillExtraFromPair outputArr, dongOut, extraCount, colExtraStart, arrExtra, rNo, rCo
+                    If includeReview Then
+                        If IsValidAccountPairCached(tkNo, tkCo, pairCache) Then
+                            outputArr(dongOut, colReview) = ""
+                        Else
+                            outputArr(dongOut, colReview) = "X"
+                        End If
+                    End If
+                    usedNo(idxNo) = usedNo(idxNo) + tienNoEntry
+                    usedCo(idxCoMatch) = usedCo(idxCoMatch) + tienNoEntry
+                    dongOut = dongOut + 1
+                    matchedCount = matchedCount + 1
+                End If
+NextNoQuick:
+                If (matchedCount Mod 500) = 0 Then If Not legacyMode Then DoEvents
+            Next idxNo
+        End If
         ' ========== PASS 1: Ghep theo QUY TAC KE TOAN ==========
         For idxNo = 1 To dsNoEntries.Count
             entryNo = dsNoEntries(idxNo)
@@ -856,6 +1067,7 @@ NextCoPass1:
             Next idxCo
 NextNoPass1:
         Next idxNo
+        If Not skipDeepPass Then
         ' ========== PASS 2: Ghep so tien khop (uu tien cung dien giai neu co) ==========
         For idxNo = 1 To dsNoEntries.Count
             entryNo = dsNoEntries(idxNo)
@@ -1028,6 +1240,7 @@ NextCoPick:
             Loop
 NextNoPass3:
         Next idxNo
+        End If
         ' ========== LEFTOVER: output unmatched amounts for review ==========
         For idxNo = 1 To dsNoEntries.Count
             entryNo = dsNoEntries(idxNo)
@@ -1084,22 +1297,53 @@ NextNoPass3:
 NextGroup:
     Next key
     ' ========== GHI OUTPUT ==========
+    Dim finalOut() As Variant
     If dongOut > 1 Then
-        Dim finalOut() As Variant
-        ReDim finalOut(1 To dongOut - 1, 1 To colCount)
-        For i = 1 To dongOut - 1
-            For j = 1 To colCount
-                finalOut(i, j) = outputArr(i, j)
-            Next j
-        Next i
-        wsKetQua.Range("A3").Resize(dongOut - 1, colCount).Value = finalOut
+        If Not legacyMode Then Application.StatusBar = "Dang ghi ket qua NKC..."
+        If legacyMode Then
+            ReDim finalOut(1 To dongOut - 1, 1 To colCount)
+            For i = 1 To dongOut - 1
+                For j = 1 To colCount
+                    finalOut(i, j) = outputArr(i, j)
+                Next j
+            Next i
+            wsKetQua.Range("A3").Resize(dongOut - 1, colCount).Value = finalOut
+        ElseIf (Not fastMode) And (dongOut - 1 < CHUNK_WRITE_ROWS) Then
+            ReDim finalOut(1 To dongOut - 1, 1 To colCount)
+            For i = 1 To dongOut - 1
+                For j = 1 To colCount
+                    finalOut(i, j) = outputArr(i, j)
+                Next j
+            Next i
+            wsKetQua.Range("A3").Resize(dongOut - 1, colCount).Value = finalOut
+        Else
+            Dim chunkSize As Long
+            Dim startRow As Long, endRow As Long, chunkRows As Long
+            Dim tempOut() As Variant
+            chunkSize = 5000
+            startRow = 1
+            Do While startRow <= dongOut - 1
+                endRow = startRow + chunkSize - 1
+                If endRow > dongOut - 1 Then endRow = dongOut - 1
+                chunkRows = endRow - startRow + 1
+                ReDim tempOut(1 To chunkRows, 1 To colCount)
+                For i = 1 To chunkRows
+                    For j = 1 To colCount
+                        tempOut(i, j) = outputArr(startRow + i - 1, j)
+                    Next j
+                Next i
+                wsKetQua.Range("A" & (startRow + 2)).Resize(chunkRows, colCount).Value = tempOut
+                startRow = endRow + 1
+                DoEvents
+            Loop
+        End If
         EnsureNKCHeader wsKetQua, includeReview, extraHeaders
         wsKetQua.Cells.Font.Name = "Times New Roman"
         FixClearFilterButton wsKetQua
         ' ========== TO VANG CAC DONG CAN REVIEW ==========
         ' Tô vàng cột review (chỉ khi includeReview=True) - dung Union() de to 1 lan
         Dim rng As Range, rngReview As Range
-        If includeReview Then
+        If includeReview And Not fastMode And Not legacyMode Then
             For i = 3 To dongOut + 1
                 If wsKetQua.Cells(i, colReview).Value = "X" Then
                     Set rng = wsKetQua.Range(wsKetQua.Cells(i, 1), wsKetQua.Cells(i, colReview))
@@ -1109,6 +1353,7 @@ NextGroup:
                         Set rngReview = Union(rngReview, rng)
                     End If
                 End If
+                If (i Mod 5000) = 0 Then If Not legacyMode Then DoEvents
             Next i
             If Not rngReview Is Nothing Then rngReview.Interior.Color = RGB(255, 255, 150)
         End If
@@ -1126,7 +1371,7 @@ NextGroup:
     ApplyWorkbookFont wb, "Times New Roman"
     ' Dem so dong can review
     Dim countReview As Long
-    If includeReview Then
+    If includeReview And Not fastMode Then
         countReview = Application.WorksheetFunction.CountIf(wsKetQua.Columns(colReview), "X")
     Else
         countReview = 0
@@ -1144,27 +1389,37 @@ NextGroup:
               IIf(includeReview, "; C" & ChrW(7847) & "n review: " & countReview, "")
     ' Sau do moi tinh TB (neu co)
     Dim tbMsg As String
-    If WorksheetExists("TB", wb) Then
-        tbMsg = Auto_Tinh_TB(wsKetQua)
-        If tbMsg <> "" Then InfoToast "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG! " & tbMsg
-    Else
-        WarnToast "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y sheet TB! T" & ChrW(7841) & "o m" & ChrW(7851) & "u TB tr" & ChrW(432) & ChrW(7899) & "c r" & ChrW(7891) & "i t" & ChrW(237) & "nh."
+    Dim doHeavy As Boolean
+    doHeavy = (Not fastMode) Or FAST_AUTO_HEAVY
+    If fastMode And Not doHeavy Then
+        WarnToast "Fast mode: Bo qua tinh TB/TH/Pivot de tranh treo."
     End If
-    ' Chay Pivot sau khi xu ly NKC/TB
-    On Error Resume Next
-    Tao_Pivot_AnToan
-    If Err.Number <> 0 Then
-        pivotErr = Err.Description
-        Err.Clear
+
+    If doHeavy Then
+        If WorksheetExists("TB", wb) Then
+            tbMsg = Auto_Tinh_TB(wsKetQua)
+            If tbMsg <> "" Then InfoToast "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG! " & tbMsg
+        Else
+            WarnToast "Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y sheet TB! T" & ChrW(7841) & "o m" & ChrW(7851) & "u TB tr" & ChrW(432) & ChrW(7899) & "c r" & ChrW(7891) & "i t" & ChrW(237) & "nh."
+        End If
     End If
-    On Error GoTo 0
-    If pivotErr <> "" Then
-        MsgBox "C" & ChrW(7842) & "NH B" & ChrW(193) & "O: kh" & ChrW(244) & "ng t" & ChrW(7841) & "o " & ChrW(273) & ChrW(432) & ChrW(7907) & "c Pivot" & vbCrLf & _
-               "Chi ti" & ChrW(7871) & "t: " & pivotErr, vbExclamation
+    If doHeavy Then
+        ' Chay Pivot sau khi xu ly NKC/TB
+        On Error Resume Next
+        Tao_Pivot_AnToan
+        If Err.Number <> 0 Then
+            pivotErr = Err.Description
+            Err.Clear
+        End If
+        On Error GoTo 0
+        If pivotErr <> "" Then
+            MsgBox "C" & ChrW(7842) & "NH B" & ChrW(193) & "O: kh" & ChrW(244) & "ng t" & ChrW(7841) & "o " & ChrW(273) & ChrW(432) & ChrW(7907) & "c Pivot" & vbCrLf & _
+                   "Chi ti" & ChrW(7871) & "t: " & pivotErr, vbExclamation
+        End If
+        ' Cap nhat sheet TH neu co
+        thMsg = Auto_Tinh_TH(wsKetQua)
+        If thMsg <> "" Then WarnToast thMsg
     End If
-    ' Cap nhat sheet TH neu co
-    thMsg = Auto_Tinh_TH(wsKetQua)
-    If thMsg <> "" Then WarnToast thMsg
 
 SkipProcessing:
     ' Bat auto refresh TH sau khi da co NKC/TB
@@ -1186,50 +1441,53 @@ SkipProcessing:
         Bo_Sung_Cot_NKC wsNKCSkip
     End If
 
-    ' Buoc 1: Tinh toan TB neu co sheet TB
-    If WorksheetExists("TB", wb) And Not wsNKCSkip Is Nothing Then
-        tbMsgSkip = Auto_Tinh_TB(wsNKCSkip)
-        If tbMsgSkip <> "" Then
-            MsgBox "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG!" & tbMsgSkip, vbInformation
+    If doHeavy Then
+        ' Buoc 1: Tinh toan TB neu co sheet TB
+        If WorksheetExists("TB", wb) And Not wsNKCSkip Is Nothing Then
+            tbMsgSkip = Auto_Tinh_TB(wsNKCSkip)
+            If tbMsgSkip <> "" Then
+                MsgBox "T" & ChrW(205) & "NH TO" & ChrW(193) & "N TB TH" & ChrW(192) & "NH C" & ChrW(212) & "NG!" & tbMsgSkip, vbInformation
+            End If
         End If
-    End If
 
-    ' Buoc 2: Tao/Cap nhat TH
-    Dim wsTHCheck As Worksheet
-    On Error Resume Next
-    Set wsTHCheck = wb.Worksheets("TH")
-    On Error GoTo 0
-
-    If wsTHCheck Is Nothing Then
-        ' Chua co TH, tao moi
+        ' Buoc 2: Tao/Cap nhat TH
+        Dim wsTHCheck As Worksheet
         On Error Resume Next
-        Application.Run "Tao_TH", Nothing
+        Set wsTHCheck = wb.Worksheets("TH")
+        On Error GoTo 0
+
+        If wsTHCheck Is Nothing Then
+            ' Chua co TH, tao moi
+            On Error Resume Next
+            Application.Run "Tao_TH", Nothing
+            If Err.Number <> 0 Then
+                MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y Tao_TH procedure!", vbExclamation
+                Err.Clear
+            End If
+            On Error GoTo 0
+        Else
+            ' TH da co, cap nhat
+            If Not wsNKCSkip Is Nothing Then
+                thMsgSkip = Auto_Tinh_TH(wsNKCSkip)
+                If thMsgSkip <> "" Then WarnToast thMsgSkip
+            End If
+        End If
+
+        ' Buoc 3: Tao Pivot
+        On Error Resume Next
+        Application.Run "Tao_Pivot_AnToan"
         If Err.Number <> 0 Then
-            MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Kh" & ChrW(244) & "ng t" & ChrW(236) & "m th" & ChrW(7845) & "y Tao_TH procedure!", vbExclamation
+            MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Tao_Pivot_AnToan kh" & ChrW(244) & "ng ch" & ChrW(7841) & "y " & ChrW(273) & ChrW(432) & ChrW(7907) & "c." & vbCrLf & _
+                   "Chi ti" & ChrW(7871) & "t: " & Err.Description, vbExclamation
             Err.Clear
         End If
         On Error GoTo 0
-    Else
-        ' TH da co, cap nhat
-        If Not wsNKCSkip Is Nothing Then
-            thMsgSkip = Auto_Tinh_TH(wsNKCSkip)
-            If thMsgSkip <> "" Then WarnToast thMsgSkip
-        End If
     End If
-
-    ' Buoc 3: Tao Pivot
-    On Error Resume Next
-    Application.Run "Tao_Pivot_AnToan"
-    If Err.Number <> 0 Then
-        MsgBox "C" & ChrW(7843) & "nh b" & ChrW(225) & "o: Tao_Pivot_AnToan kh" & ChrW(244) & "ng ch" & ChrW(7841) & "y " & ChrW(273) & ChrW(432) & ChrW(7907) & "c." & vbCrLf & _
-               "Chi ti" & ChrW(7871) & "t: " & Err.Description, vbExclamation
-        Err.Clear
-    End If
-    On Error GoTo 0
 
     ' Additional steps after processing (or skipping)
     MsgBox ChrW(272) & ChrW(227) & " ho" & ChrW(224) & "n t" & ChrW(7845) & "t!" & vbCrLf & _
            "C" & ChrW(243) & " th" & ChrW(7875) & " ch" & ChrW(7841) & "y ti" & ChrW(7871) & "p c" & ChrW(225) & "c b" & ChrW(432) & ChrW(7899) & "c kh" & ChrW(225) & "c n" & ChrW(7871) & "u c" & ChrW(7847) & "n.", vbInformation
+    Application.StatusBar = False
     Application.ScreenUpdating = oldScreen
     Application.Calculation = oldCalc
     Application.EnableEvents = oldEvents
