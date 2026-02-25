@@ -457,6 +457,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Dim oldScreen As Boolean
     Dim oldEvents As Boolean
     Dim oldStatus As Variant
+    Dim doHeavy As Boolean
     Const SAFE_MAX_GROUP_ROWS As Long = 2000
     Const FAST_FORCE_ROWS As Long = 120000
     Const FAST_AUTO_HEAVY As Boolean = True
@@ -483,12 +484,26 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
 
-    ' If NKC already exists AND no source sheet -> Skip processing (template workflow)
-    If Not wsNKCExists Is Nothing And wsNguon Is Nothing Then
-        InfoToast "Sheet NKC da ton tai va khong co 'So Nhat Ky Chung'. Bo qua xu ly."
-        EnsureNKCHeader wsNKCExists, False
-        includeReview = False
-        GoTo SkipProcessing
+    ' If no source sheet -> auto-pick ActiveSheet (behavior like 1.1.1)
+    If wsNguon Is Nothing Then
+        If ActiveSheet Is Nothing Then
+            MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' va khong co sheet dang active.", vbExclamation
+            Exit Sub
+        End If
+        If StrComp(ActiveSheet.Name, "NKC", vbTextCompare) = 0 Then
+            ' Treat as already processed: skip main processing, continue next steps
+            If Not wsNKCExists Is Nothing Then
+                InfoToast "Sheet NKC da ton tai va khong co 'So Nhat Ky Chung'. Bo qua xu ly."
+                EnsureNKCHeader wsNKCExists, False
+                includeReview = False
+                doHeavy = True
+                GoTo SkipProcessing
+            Else
+                MsgBox "Khong tim thay sheet nguon du lieu.", vbExclamation
+                Exit Sub
+            End If
+        End If
+        Set wsNguon = ActiveSheet
     End If
 
     ' If NKC exists AND source sheet exists -> Ask user what to do
@@ -497,6 +512,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
             InfoToast "Giu nguyen sheet NKC hien co. Bo qua xu ly."
             EnsureNKCHeader wsNKCExists, False
             includeReview = False
+            doHeavy = True
             GoTo SkipProcessing
         End If
         ' User confirmed -> will rebuild NKC from source
@@ -1389,7 +1405,6 @@ NextGroup:
               IIf(includeReview, "; C" & ChrW(7847) & "n review: " & countReview, "")
     ' Sau do moi tinh TB (neu co)
     Dim tbMsg As String
-    Dim doHeavy As Boolean
     doHeavy = (Not fastMode) Or FAST_AUTO_HEAVY
     If fastMode And Not doHeavy Then
         WarnToast "Fast mode: Bo qua tinh TB/TH/Pivot de tranh treo."
