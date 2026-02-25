@@ -42,12 +42,15 @@ Private Sub Bo_Sung_Cot_NKC(wsNKC As Worksheet)
             End If
             ngayHT = arr(r, 7)
 
-            ' Bo sung Thang (cot 8) tu Ngay hach toan
-            If IsError(arr(r, 8)) Or IsEmpty(arr(r, 8)) Or arr(r, 8) = "" Then
-                If IsDate(ngayHT) Then
-                    arr(r, 8) = Month(CDate(ngayHT))
-                Else
+            ' Bo sung Thang (cot 8): uu tien Ngay hach toan, neu khong co thi lay Ngay chung tu
+            Dim mVal As Variant, mCalc As Variant
+            mVal = arr(r, 8)
+            If IsError(mVal) Or IsEmpty(mVal) Or mVal = "" Or mVal = 0 Or Not IsNumeric(mVal) Or mVal < 1 Or mVal > 12 Then
+                mCalc = GetMonthFromAnyDate(ngayHT, arr(r, 1))
+                If IsEmpty(mCalc) Or mCalc = "" Then
                     arr(r, 8) = 0
+                Else
+                    arr(r, 8) = mCalc
                 End If
             End If
 
@@ -2795,11 +2798,65 @@ Private Function WorksheetExists(ByVal sheetName As String, Optional wb As Workb
     On Error GoTo 0
 End Function
 Private Function GetMonthValue(vDate As Variant) As Variant
-    If IsDate(vDate) Then
-        GetMonthValue = Month(vDate)
+    GetMonthValue = GetMonthFromAnyDate(vDate, Empty)
+End Function
+
+Private Function GetMonthFromAnyDate(ByVal vPrimary As Variant, ByVal vFallback As Variant) As Variant
+    Dim d As Variant
+    d = TryParseDate(vPrimary)
+    If IsEmpty(d) Then d = TryParseDate(vFallback)
+    If IsEmpty(d) Then
+        GetMonthFromAnyDate = ""
     Else
-        GetMonthValue = ""
+        GetMonthFromAnyDate = Month(d)
     End If
+End Function
+
+Private Function TryParseDate(ByVal v As Variant) As Variant
+    On Error GoTo Failed
+    If IsError(v) Or IsNull(v) Or IsEmpty(v) Then
+        TryParseDate = Empty
+        Exit Function
+    End If
+    If IsDate(v) Then
+        TryParseDate = CDate(v)
+        Exit Function
+    End If
+    Dim s As String
+    s = Trim$(CStr(v))
+    If Len(s) = 0 Then
+        TryParseDate = Empty
+        Exit Function
+    End If
+    ' numeric text or number -> Excel serial date or yyyymmdd
+    If IsNumeric(s) Then
+        Dim n As Double
+        n = CDbl(s)
+        If n >= 10000101# And n <= 99991231# Then
+            Dim y As Long, m As Long, d As Long
+            y = CLng(n \ 10000)
+            m = CLng((n \ 100) Mod 100)
+            d = CLng(n Mod 100)
+            If y >= 1900 And m >= 1 And m <= 12 And d >= 1 And d <= 31 Then
+                TryParseDate = DateSerial(y, m, d)
+                Exit Function
+            End If
+        End If
+        ' Excel serial date (supports numeric text like "45658")
+        If n > 0 And n < 60000 Then
+            TryParseDate = DateSerial(1899, 12, 30) + CLng(n)
+            Exit Function
+        End If
+    End If
+    ' normalize common separators
+    s = Replace$(s, ".", "/")
+    s = Replace$(s, "-", "/")
+    If IsDate(s) Then
+        TryParseDate = CDate(s)
+        Exit Function
+    End If
+Failed:
+    TryParseDate = Empty
 End Function
 
 Private Function NormalizeDG(ByVal s As Variant) As String
