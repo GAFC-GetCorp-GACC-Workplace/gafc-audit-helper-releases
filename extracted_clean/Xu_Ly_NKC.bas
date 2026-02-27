@@ -482,7 +482,7 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Set wsNKCExists = wb.Sheets("NKC")
     On Error GoTo 0
 
-    ' Check if "So Nhat Ky Chung" source sheet exists
+    ' Check if "So Nhat Ky Chung" source sheet exists (uu tien cao nhat)
     On Error Resume Next
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
@@ -504,16 +504,9 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         End If
     End If
 
-    ' If NKC exists AND source sheet exists -> Ask user what to do
+    ' If NKC exists AND source sheet exists -> always rebuild NKC from source
     If Not wsNKCExists Is Nothing And Not wsNguon Is Nothing Then
-        If Not ConfirmProceed("Sheet 'NKC' da ton tai. Xoa va tao lai tu 'So Nhat Ky Chung'?") Then
-            InfoToast "Giu nguyen sheet NKC hien co. Bo qua xu ly."
-            EnsureNKCHeader wsNKCExists, False
-            includeReview = False
-            doHeavy = True
-            GoTo SkipProcessing
-        End If
-        ' User confirmed -> will rebuild NKC from source
+        InfoToast "Da tim thay 'So Nhat Ky Chung'. Se tao lai sheet NKC."
     End If
 
     ' If source sheet exists but has no data, fall back to existing NKC if possible
