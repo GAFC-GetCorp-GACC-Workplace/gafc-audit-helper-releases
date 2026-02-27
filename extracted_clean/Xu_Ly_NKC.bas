@@ -487,26 +487,21 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
     Set wsNguon = wb.Sheets("So Nhat Ky Chung")
     On Error GoTo 0
 
-    ' If no source sheet -> auto-pick ActiveSheet (behavior like 1.1.1)
+    ' If no source sheet -> try to detect from ActiveSheet or other sheets
     If wsNguon Is Nothing Then
-        If ActiveSheet Is Nothing Then
-            MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' va khong co sheet dang active.", vbExclamation
-            Exit Sub
-        End If
-        If StrComp(ActiveSheet.Name, "NKC", vbTextCompare) = 0 Then
-            ' Treat as already processed: skip main processing, continue next steps
-            If Not wsNKCExists Is Nothing Then
-                InfoToast "Sheet NKC da ton tai va khong co 'So Nhat Ky Chung'. Bo qua xu ly."
+        Set wsNguon = FindSourceSheetSmart(wb, ActiveSheet)
+        If wsNguon Is Nothing Then
+            ' Treat as already processed if NKC has data
+            If Not wsNKCExists Is Nothing And SheetHasDataRows(wsNKCExists, 3) Then
+                InfoToast "Khong tim thay sheet nguon. Su dung NKC hien co."
                 EnsureNKCHeader wsNKCExists, False
                 includeReview = False
                 doHeavy = True
                 GoTo SkipProcessing
-            Else
-                MsgBox "Khong tim thay sheet nguon du lieu.", vbExclamation
-                Exit Sub
             End If
+            MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' hoac sheet nguon du lieu hop le.", vbExclamation
+            Exit Sub
         End If
-        Set wsNguon = ActiveSheet
     End If
 
     ' If NKC exists AND source sheet exists -> Ask user what to do
@@ -521,14 +516,20 @@ Public Sub Xu_ly_NKC1111(control As IRibbonControl)
         ' User confirmed -> will rebuild NKC from source
     End If
 
-    ' If no NKC and no source sheet -> Ask to use ActiveSheet
-    If wsNKCExists Is Nothing And wsNguon Is Nothing Then
-        If ActiveSheet Is Nothing Then
-            MsgBox "Khong tim thay sheet 'So Nhat Ky Chung' va khong co sheet dang active.", vbExclamation
-            Exit Sub
+    ' If source sheet exists but has no data, fall back to existing NKC if possible
+    If Not wsNguon Is Nothing Then
+        If Not SheetHasDataRows(wsNguon, 2) Then
+            If Not wsNKCExists Is Nothing And SheetHasDataRows(wsNKCExists, 3) Then
+                InfoToast "Sheet nguon khong co du lieu. Su dung NKC hien co."
+                EnsureNKCHeader wsNKCExists, False
+                includeReview = False
+                doHeavy = True
+                GoTo SkipProcessing
+            Else
+                MsgBox "Sheet nguon khong co du lieu.", vbExclamation
+                Exit Sub
+            End If
         End If
-        If Not ConfirmProceed("Khong tim thay sheet 'So Nhat Ky Chung'. Su dung sheet hien tai '" & ActiveSheet.Name & "' lam nguon?") Then Exit Sub
-        Set wsNguon = ActiveSheet
     End If
     wsNguon.Activate
     Set wb = wsNguon.Parent
@@ -2981,6 +2982,111 @@ Private Function DictToPairsSorted(dict As Object) As Variant
     Next i
 
     DictToPairsSorted = res
+End Function
+
+Private Function FindSourceSheetSmart(ByVal wb As Workbook, ByVal prefer As Worksheet) As Worksheet
+    Dim ws As Worksheet
+    If Not prefer Is Nothing Then
+        If NameLooksLikeSource(prefer) Then
+            Set FindSourceSheetSmart = prefer
+            Exit Function
+        End If
+    End If
+    For Each ws In wb.Worksheets
+        If Not ws Is Nothing Then
+            If LCase$(ws.Name) <> "nkc" And LCase$(ws.Name) <> "tb" And LCase$(ws.Name) <> "pv" And _
+               LCase$(ws.Name) <> "pvct" And LCase$(ws.Name) <> "th" Then
+                If NameLooksLikeSource(ws) Then
+                    Set FindSourceSheetSmart = ws
+                    Exit Function
+                End If
+            End If
+        End If
+    Next ws
+End Function
+
+Private Function NameLooksLikeSource(ByVal ws As Worksheet) As Boolean
+    Dim s As String
+    s = NormalizeHeaderLocal(ws.Name)
+    If s = "" Then Exit Function
+    ' Ten sheet nguon thuong chua "so nhat ky chung" / "nhat ky chung"
+    If InStr(s, "so nhat ky chung") > 0 Then
+        NameLooksLikeSource = True
+        Exit Function
+    End If
+    If InStr(s, "nhat ky chung") > 0 Then
+        NameLooksLikeSource = True
+        Exit Function
+    End If
+    If InStr(s, "so nhat ky") > 0 Then
+        NameLooksLikeSource = True
+        Exit Function
+    End If
+    If InStr(s, "nhat ky") > 0 Then
+        NameLooksLikeSource = True
+    End If
+End Function
+
+Private Function NormalizeHeaderLocal(ByVal v As Variant) As String
+    Dim s As String
+    If IsError(v) Or IsEmpty(v) Then NormalizeHeaderLocal = "": Exit Function
+    s = LCase$(Trim$(CStr(v)))
+    s = Replace$(s, Chr$(160), " ")
+    Do While InStr(s, "  ") > 0
+        s = Replace$(s, "  ", " ")
+    Loop
+    NormalizeHeaderLocal = RemoveAccentsAsciiLocal(s)
+End Function
+
+Private Function RemoveAccentsAsciiLocal(text As String) As String
+    Dim fromCodes As Variant, toChars As Variant
+    Dim i As Long
+    fromCodes = Array( _
+        225, 224, 7843, 227, 7841, 259, 7855, 7857, 7859, 7861, 7863, _
+        226, 7845, 7847, 7849, 7851, 7853, 233, 232, 7867, 7869, 7865, _
+        234, 7871, 7873, 7875, 7877, 7879, 237, 236, 7881, 297, 7883, _
+        243, 242, 7887, 245, 7885, 244, 7889, 7891, 7893, 7895, 7897, _
+        417, 7899, 7901, 7903, 7905, 7907, 250, 249, 7911, 361, 7909, _
+        432, 7913, 7915, 7917, 7919, 7921, 253, 7923, 7927, 7929, 7925, _
+        273, _
+        193, 192, 7842, 195, 7840, 258, 7854, 7856, 7858, 7860, 7862, _
+        194, 7844, 7846, 7848, 7850, 7852, 201, 200, 7866, 7868, 7864, _
+        202, 7870, 7872, 7874, 7876, 7878, 205, 204, 7880, 296, 7882, _
+        211, 210, 7886, 213, 7884, 212, 7888, 7890, 7892, 7894, 7896, _
+        416, 7898, 7900, 7902, 7904, 7906, 218, 217, 7910, 360, 7908, _
+        431, 7912, 7914, 7916, 7918, 7920, 221, 7922, 7926, 7928, 7924, _
+        272)
+    toChars = Array( _
+        "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", _
+        "a", "a", "a", "a", "a", "a", "e", "e", "e", "e", "e", _
+        "e", "e", "e", "e", "e", "e", "i", "i", "i", "i", "i", _
+        "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", _
+        "o", "o", "o", "o", "o", "o", "u", "u", "u", "u", "u", _
+        "u", "u", "u", "u", "u", "u", "y", "y", "y", "y", "y", _
+        "d", _
+        "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", _
+        "A", "A", "A", "A", "A", "A", "E", "E", "E", "E", "E", _
+        "E", "E", "E", "E", "E", "E", "I", "I", "I", "I", "I", _
+        "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", "O", _
+        "O", "O", "O", "O", "O", "O", "U", "U", "U", "U", "U", _
+        "U", "U", "U", "U", "U", "U", "Y", "Y", "Y", "Y", "Y", _
+        "D")
+    For i = 0 To UBound(fromCodes)
+        text = Replace$(text, ChrW(fromCodes(i)), toChars(i))
+    Next i
+    RemoveAccentsAsciiLocal = text
+End Function
+
+Private Function SheetHasDataRows(ByVal ws As Worksheet, ByVal startRow As Long) As Boolean
+    Dim lastRow As Long, lastCol As Long
+    On Error Resume Next
+    lastRow = GetLastUsedRow(ws)
+    lastCol = GetLastUsedColumn(ws)
+    On Error GoTo 0
+    If lastRow < startRow Then Exit Function
+    If lastCol <= 0 Then Exit Function
+    If Application.WorksheetFunction.CountA(ws.Range(ws.Cells(startRow, 1), ws.Cells(lastRow, lastCol))) = 0 Then Exit Function
+    SheetHasDataRows = True
 End Function
 
 Private Sub ApplyWorkbookFont(ByVal wb As Workbook, ByVal fontName As String)
